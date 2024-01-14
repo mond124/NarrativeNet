@@ -2,13 +2,28 @@ import { NavBarSection, JumboTron } from "../../components";
 
 const HomePage = () => {
   return (
-    <div className="w-full h-dvh bg-white flex flex-col gap-10">
+    <div className="w-full h-dvh bg-white flex flex-col gap-5">
       <div>
-        <nav>
+        <nav className="relative">
           <NavBarSection />
         </nav>
       </div>
-      <div className="flex justify-center">
+      <div className="flex justify-center gap-2">
+        <JumboTron />
+      </div>
+      <div className="flex justify-center gap-2">
+        <JumboTron />
+      </div>
+      <div className="flex justify-center gap-2">
+        <JumboTron />
+      </div>
+      <div className="flex justify-center gap-2">
+        <JumboTron />
+      </div>
+      <div className="flex justify-center gap-2">
+        <JumboTron />
+      </div>
+      <div className="flex justify-center gap-2">
         <JumboTron />
       </div>
     </div>
