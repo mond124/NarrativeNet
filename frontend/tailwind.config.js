@@ -8,9 +8,9 @@ export default {
         Quicksand: ["Quicksand"],
       },
       colors: {
-        "bg-nav": "#4A90E2",
-        "text-light": "#4A90E2",
-        "bg-jumbotron": "#CDE5FF"
+        "bg-nav": "#6200EE",
+        "text-light": "#6200EE",
+        "bg-jumbotron": "#fff"
       },
       keyframes: {
         fadeIn: {
