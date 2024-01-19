@@ -1,5 +1,6 @@
 import { FaSun, FaMoon } from "react-icons/fa";
 import useTheme from "../../hooks/useTheme";
+import { color } from "framer-motion";
 
 const ToggleButtonTheme = () => {
   const [colorTheme, setTheme] = useTheme();
@@ -11,7 +12,9 @@ const ToggleButtonTheme = () => {
 
   return (
     <div className="flex items-center gap-1">
-      <FaSun className="text-white text-2xl dark:text-black animate-fadeIn duration-200" />
+      {colorTheme === "light" && (
+        <FaSun className="text-white text-2xl animate-fadeIn duration-200" />
+      )}
       <input
         type="checkbox"
         className="toggle toggle-warning [--tglbg:white] bg-gray-700  border-black"
@@ -19,7 +22,9 @@ const ToggleButtonTheme = () => {
         checked={colorTheme === "dark"}
         onChange={toggleDarkMode}
       />
-      <FaMoon className="text-white text-2xl text text-text-light dark:text-white animate-fadeIn duration-200" />
+      {colorTheme === "dark" && (
+        <FaMoon className="text-white text-2xl text animate-fadeIn duration-200" />
+      )}
     </div>
   );
 };
