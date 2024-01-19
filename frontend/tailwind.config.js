@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  darkMode: 'class',
   theme: {
     extend: {
       fontFamily: {
@@ -8,6 +9,7 @@ export default {
       },
       colors: {
         "bg-nav": "#4A90E2",
+        "text-light": "#4A90E2",
         "bg-jumbotron": "#CDE5FF"
       },
       keyframes: {

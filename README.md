@@ -6,8 +6,8 @@ A brief description of what this project does and who it's for
 
 ## Authors
 
-- [Raihan Firdaus](https://www.github.com/RH203)
-- [Raymond Taniwidjaja](https://www.github.com/mond124)
+- [Raihan Firdaus](https://www.github.com/RH203) Frontend
+- [Raymond Taniwidjaja](https://www.github.com/mond124) Backend
 
 
 ## Installation
