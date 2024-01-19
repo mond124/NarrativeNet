@@ -4,6 +4,7 @@ import ToggleButtonTheme from "./Button/ToggleButtonTheme";
 import Recommendations from "./layout/Recommendations";
 import RatingRounded from "./roundedComponents/RatingRounded";
 import ViewsRounded from "./roundedComponents/ViewsRounded";
+import GenreRounded from "./roundedComponents/GenreRounded";
 
 export {
   NavBarSection,
@@ -12,4 +13,5 @@ export {
   Recommendations,
   RatingRounded,
   ViewsRounded,
+  GenreRounded
 };
