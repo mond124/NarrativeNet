@@ -10,16 +10,18 @@ const Recommendations = () => {
 
   return (
     <div className="w-full h-dvh pl-2 flex gap-1 flex-col">
-      <div className="flex justify-between">
-      <h1 className="text-black font-Quicksand font-semibold text-2xl">Recomendation</h1>
-        <p className="flex items-center gap-1 justify-end pr-5 text-black font-Quicksand font-semibold text-2xl">
-          <a href="">
-            More 
-          </a>
-          <FaArrowRight className="text-xl" />
-        </p>
-      </div>
+      <p className="flex items-center gap-1 justify-end pr-5 text-black font-Quicksand font-semibold text-xl">
+        <a href="">More</a>
+        <FaArrowRight />
+      </p>
+
+      <h1 className="text-black font-Quicksand font-bold text-2xl text-center">
+        Recomendation
+      </h1>
       <div className="w-[full] flex flex-wrap  gap-1 justify-center">
+        <Card synopsis={synopsis} />
+        <Card synopsis={synopsis} />
+        <Card synopsis={synopsis} />
         <Card synopsis={synopsis} />
         <Card synopsis={synopsis} />
         <Card synopsis={synopsis} />
@@ -42,7 +44,7 @@ const Card = (props) => {
 
   return (
     <div
-      className={`w-[35%] flex gap-2 dark:border-solid border-2 dark:bg-gray-700 border-none bg-white border-black rounded-md shadow-xl ${
+      className={`w-[27%] flex gap-2 dark:border-solid border-2 dark:bg-gray-700 border-none bg-white border-black rounded-md shadow-xl ${
         expanded ? "h-auto" : "min-h-[200px] overflow-hidden"
       }`}
     >
@@ -57,7 +59,7 @@ const Card = (props) => {
         <h1 className="text-center font-Quicksand font-semibold dark:text-white text-black text-2xl">
           Romance and Dummy Book 3
         </h1>
-        <GenreRounded/>
+        <GenreRounded />
 
         {WordCount(props.synopsis) >= 8 ? (
           <div className="flex flex-wrap">
@@ -68,7 +70,7 @@ const Card = (props) => {
                     .split(" ")
                     .slice(0, 10)
                     .join(" ")
-                    .concat("", "...")}
+                    .concat("", "...", " ")}
             </p>
             <button
               onClick={toggleExpand}
