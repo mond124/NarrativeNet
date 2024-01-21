@@ -1,14 +1,16 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  darkMode: 'class',
   theme: {
     extend: {
       fontFamily: {
         Quicksand: ["Quicksand"],
       },
       colors: {
-        "bg-nav": "#4A90E2",
-        "bg-jumbotron": "#CDE5FF"
+        "bg-nav": "#6200EE",
+        "text-light": "#6200EE",
+        "bg-jumbotron": "#fff"
       },
       keyframes: {
         fadeIn: {
