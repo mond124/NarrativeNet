@@ -32,10 +32,6 @@ def getBooksByGenre(request, genre_name):
         books = Book.objects.filter(genre__icontains=genres[0])
         for genre in genres[1:]:
             books = books.filter(genre__icontains=genre)
-<<<<<<< Updated upstream
-        print(f"Books for genre(s) '{', '.join(genres)}': {books}")  # Debug print
-=======
->>>>>>> Stashed changes
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     except Book.DoesNotExist:
