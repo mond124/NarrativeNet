@@ -27,11 +27,16 @@ def getBooks(request):
 @api_view(['GET'])
 def getBooksByGenre(request, genre_name):
     try:
-        books = Book.objects.filter(genre=genre_name)
+        genres = [genre.strip() for genre in genre_name.split(',')]
+        books = Book.objects.filter(genre__icontains=genres[0])
+        for genre in genres[1:]:
+            books = books.filter(genre__icontains=genre)
         serializer = BookSerializer(books, many=True)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     except Book.DoesNotExist:
-        return Response({"detail": "Books not found for the specified genre."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": "Books not found for the specified genre(s)."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 def getRoutes(request):
