@@ -7,8 +7,11 @@ class GenreSerializer(serializers.ModelSerializer):
         fields = ['name']
 
 class BookSerializer(serializers.ModelSerializer):
-    genres = GenreSerializer(many=True, read_only=True)
+    genres = serializers.SerializerMethodField()
 
     class Meta:
         model = Book
         fields = ['book_id', 'title', 'synopsis', 'views', 'rating', 'genres']
+
+    def get_genres(self, obj):
+        return [genre.name for genre in obj.genres.all()]
