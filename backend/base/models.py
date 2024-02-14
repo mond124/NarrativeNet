@@ -14,8 +14,8 @@ class Book(models.Model):
     views = models.IntegerField()
     rating = models.DecimalField(max_digits=3, decimal_places=1)
     genres = models.ManyToManyField(Genre)
-    text_path = models.FileField(upload_to='texts/', default='default_text.txt')
-    image_path = models.ImageField(upload_to='images/', default='default_image.jpg')
+    text_path = models.FileField(upload_to='books/texts/', default='default_text.txt')
+    image_path = models.ImageField(upload_to='books/images/', default='default_image.jpg')
 
     def __str__(self):
         return self.title

@@ -43,6 +43,8 @@ def getRoutes(request):
     routes = [
         '/api/token',
         '/api/token/refresh',
+        '/api/books',
+        '/api/books/<str:genre_name>/',
         '/api/data',
     ]
     return Response(routes)
