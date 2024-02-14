@@ -14,8 +14,15 @@ class Book(models.Model):
     views = models.IntegerField()
     rating = models.DecimalField(max_digits=3, decimal_places=1)
     genres = models.ManyToManyField(Genre)
-    text_path = models.FileField(upload_to='books/texts/', default='default_text.txt')
-    image_path = models.ImageField(upload_to='books/images/', default='default_image.jpg')
+    cover_image = models.ImageField(upload_to='covers/', default='default_cover.jpg')
 
     def __str__(self):
         return self.title
+
+class Chapter(models.Model):
+    book = models.ForeignKey(Book, on_delete=models.CASCADE)
+    title = models.CharField(max_length=255)
+    file = models.FileField(upload_to='chapters/')
+
+    def __str__(self):
+        return f"{self.book.title} - {self.title}"
