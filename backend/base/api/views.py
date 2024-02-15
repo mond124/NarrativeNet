@@ -40,7 +40,7 @@ def getBooksByGenre(request, genre_name):
 
 @api_view(['GET'])
 def searchBooks(request):
-    query = request.query_params.get('query', '')
+    query = request.query_params.get('q', '')
     if query:
         books = Book.objects.all()
         results = []
