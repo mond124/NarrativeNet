@@ -3,6 +3,7 @@ from rest_framework.decorators import api_view
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework import status
+from fuzzywuzzy import fuzz
 from ..models import Book
 from .serializers import BookSerializer
 
@@ -39,14 +40,22 @@ def getBooksByGenre(request, genre_name):
 
 @api_view(['GET'])
 def searchBooks(request):
-    query_params = request.query_params
-    search_query = query_params.get('query', '')
+    query = request.query_params.get('query', '')
+    if query:
+        books = Book.objects.all()
+        results = []
+        for book in books:
+            # Check if either title or synopsis contains the query term
+            if query.lower() in book.title.lower() or query.lower() in book.synopsis.lower():
+                results.append(book)
 
-    if search_query:
-        # Perform case-insensitive search based on book title
-        books = Book.objects.filter(title__icontains=search_query)
-        serializer = BookSerializer(books, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            # Fuzzy matching: Check if the query term closely resembles the title
+            similarity = fuzz.partial_ratio(query.lower(), book.title.lower())
+            if similarity >= 60:  # Adjust the threshold as needed
+                results.append(book)
+
+        serializer = BookSerializer(results, many=True)
+        return Response(serializer.data)
     else:
         return Response({"detail": "Please provide a search query."}, status=status.HTTP_400_BAD_REQUEST)
 
