@@ -28,8 +28,7 @@ def getBooks(request):
 def getBooksByGenre(request, genre_name):
     try:
         genres = [genre.strip() for genre in genre_name.split(',')]
-        books = Book.objects.filter(genres__name__in=genres).distinct()
-        
+        books = Book.objects.filter(genres__name__in=genres).distinct()        
         print(f"Books for genre(s) '{', '.join(genres)}': {books}")  # Debug print
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -39,6 +38,19 @@ def getBooksByGenre(request, genre_name):
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
+def searchBooks(request):
+    query_params = request.query_params
+    search_query = query_params.get('query', '')
+
+    if search_query:
+        # Perform case-insensitive search based on book title
+        books = Book.objects.filter(title__icontains=search_query)
+        serializer = BookSerializer(books, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    else:
+        return Response({"detail": "Please provide a search query."}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
 def getRoutes(request):
     routes = [
         '/api/token',
@@ -46,5 +58,6 @@ def getRoutes(request):
         '/api/books',
         '/api/books/<str:genre_name>/',
         '/api/data',
+        '/api/search-books/?query=<search_query>',
     ]
     return Response(routes)

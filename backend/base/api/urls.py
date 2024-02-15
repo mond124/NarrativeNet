@@ -10,4 +10,5 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('books/', getBooks, name='get_books'),
     path('books/<str:genre_name>/', getBooksByGenre, name='get_books_by_genre'),
+    path('search-books/', views.searchBooks, name='search_books'),
 ]
