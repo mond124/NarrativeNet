@@ -1,11 +1,19 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 
 # Create your models here.
+
 class Genre(models.Model):
     name = models.CharField(max_length=50, unique=True)
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        self.name = self.name.title()  # Convert the genre name to title case
+        if Genre.objects.filter(name=self.name).exists():
+            raise ValidationError('Genre with this name already exists.')
+        super().save(*args, **kwargs)  # Proceed with saving the genre
 
 class Book(models.Model):
     book_id = models.AutoField(primary_key=True)
