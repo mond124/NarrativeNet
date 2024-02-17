@@ -23,12 +23,17 @@ class Genre(models.Model):
 
 class Book(models.Model):
     book_id = models.AutoField(primary_key=True)
-    title = models.CharField(max_length=255)
+    title = models.CharField(max_length=255, unique=True)  # Keep unique=True
     synopsis = models.TextField()
     views = models.IntegerField()
     rating = models.DecimalField(max_digits=3, decimal_places=1)
     genres = models.ManyToManyField(Genre)
     cover_image = models.ImageField(upload_to='covers/', default='default_cover.jpg')
+
+    def save(self, *args, **kwargs):
+        # Normalize title to title case before saving
+        self.title = self.title.title()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
