@@ -40,8 +40,9 @@ class Book(models.Model):
 
 class Chapter(models.Model):
     book = models.ForeignKey(Book, on_delete=models.CASCADE)
-    title = models.CharField(max_length=255)
+    title = models.CharField(max_length=255, blank=True)
     file = models.FileField(upload_to='chapters/')
+    chapter_number = models.IntegerField(null=True, blank=False)
 
     def save(self, *args, **kwargs):
         # Normalize title to title case before saving
@@ -49,4 +50,4 @@ class Chapter(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.book.title} - {self.title}"
+        return f"{self.book.title}"
