@@ -43,5 +43,10 @@ class Chapter(models.Model):
     title = models.CharField(max_length=255)
     file = models.FileField(upload_to='chapters/')
 
+    def save(self, *args, **kwargs):
+        # Normalize title to title case before saving
+        self.title = self.title.title()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.book.title} - {self.title}"
