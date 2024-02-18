@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import MyTokenObtainPairView, getBooks, getBooksByGenre
+from .views import MyTokenObtainPairView, getBooks, getBooksByGenre, BulkCreateChaptersAPIView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 
@@ -11,4 +11,5 @@ urlpatterns = [
     path('books/', getBooks, name='get_books'),
     path('books/<str:genre_name>/', getBooksByGenre, name='get_books_by_genre'),
     path('search-books/', views.searchBooks, name='search_books'),
+    path('bulk-create-chapters/', BulkCreateChaptersAPIView.as_view(), name='bulk_create_chapters'),
 ]
