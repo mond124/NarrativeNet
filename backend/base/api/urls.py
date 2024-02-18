@@ -12,4 +12,6 @@ urlpatterns = [
     path('books/<str:genre_name>/', getBooksByGenre, name='get_books_by_genre'),
     path('search-books/', views.searchBooks, name='search_books'),
     path('bulk-create-chapters/', BulkCreateChaptersAPIView.as_view(), name='bulk_create_chapters'),
+    path('create-book/', views.createBook, name='create_book'),
+    path('bulk-create-books-and-chapters/', views.BulkCreateBooksAndChaptersAPIView.as_view(), name='bulk_create_books_and_chapters'),
 ]
