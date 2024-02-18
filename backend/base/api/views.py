@@ -5,7 +5,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework import status
 from fuzzywuzzy import fuzz
-from ..models import Book
+from ..models import Book, Genre
 from .serializers import BookSerializer, ChapterSerializer
 from django.db.models import Q
 
@@ -104,7 +104,19 @@ class BulkCreateBooksAndChaptersAPIView(APIView):
 def createBook(request):
     serializer = BookSerializer(data=request.data)
     if serializer.is_valid():
-        serializer.save()
+        # Check if genres exist, create if not
+        genres_data = request.data.get('genres', [])
+        genres = []
+        for genre_name in genres_data:
+            genre, _ = Genre.objects.get_or_create(name=genre_name)
+            genres.append(genre)
+
+        # Save the book with associated genres
+        book = serializer.save()
+
+        # Add genres to the book
+        book.genres.add(*genres)
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
