@@ -75,7 +75,39 @@ class BulkCreateChaptersAPIView(APIView):
             return Response(chapters_serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(chapters_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
+class BulkCreateBooksAndChaptersAPIView(APIView):
+    def post(self, request, format=None):
+        data = request.data
+        books_data = data.get('books', [])
+        chapters_data = data.get('chapters', [])
+
+        books_serializer = BookSerializer(data=books_data, many=True)
+        chapters_serializer = ChapterSerializer(data=chapters_data, many=True)
+
+        response_data = {}
+        if books_serializer.is_valid():
+            books_serializer.save()
+            response_data['books'] = books_serializer.data
+        else:
+            response_data['books_errors'] = books_serializer.errors
+
+        if chapters_serializer.is_valid():
+            chapters_serializer.save()
+            response_data['chapters'] = chapters_serializer.data
+        else:
+            response_data['chapters_errors'] = chapters_serializer.errors
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
+
+@api_view(['POST'])
+def createBook(request):
+    serializer = BookSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 @api_view(['GET'])
 def getRoutes(request):
     routes = [
