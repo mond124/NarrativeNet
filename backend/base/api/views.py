@@ -1,11 +1,12 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
+from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework import status
 from fuzzywuzzy import fuzz
 from ..models import Book
-from .serializers import BookSerializer
+from .serializers import BookSerializer, ChapterSerializer
 from django.db.models import Q
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -65,6 +66,16 @@ def searchBooks(request):
     else:
         return Response({"detail": "Please provide a search query."}, status=status.HTTP_400_BAD_REQUEST)
 
+class BulkCreateChaptersAPIView(APIView):
+    def post(self, request, format=None):
+        chapters_data = request.data  # Assuming the JSON data is sent as the request body
+        chapters_serializer = ChapterSerializer(data=chapters_data, many=True)
+        if chapters_serializer.is_valid():
+            chapters_serializer.save()  # Save the chapters to the database
+            return Response(chapters_serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(chapters_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
 @api_view(['GET'])
 def getRoutes(request):
     routes = [
