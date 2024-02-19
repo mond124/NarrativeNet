@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework import status
-from fuzzywuzzy import fuzz
+from fuzzywuzzy import process,fuzz
 from ..models import Book, Genre
 from .serializers import BookSerializer, ChapterSerializer
 from django.db.models import Q
@@ -42,14 +42,14 @@ def getBooksByGenre(request, genre_name):
 
 @api_view(['GET'])
 def searchBooks(request):
-    query = request.query_params.get('query', '')
+    query = request.query_params.get('q', '')
     if query:
         # Perform a case-insensitive search across title and synopsis fields
         results = Book.objects.filter(Q(title__icontains=query) | Q(synopsis__icontains=query))
 
         # Fuzzy matching for handling typos
         titles = [book.title for book in results]
-        fuzzy_results = fuzz.extract(query, titles, limit=5)
+        fuzzy_results = process.extract(query, titles, limit=5)
 
         # Filter books based on fuzzy matched titles and similarity threshold
         fuzzy_matching_results = []
