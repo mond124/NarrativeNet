@@ -103,33 +103,61 @@ class BulkCreateBooksAndChaptersAPIView(APIView):
 @api_view(['POST'])
 def createBook(request):
     if isinstance(request.data, list):  # Check if data is a list (bulk creation)
-        books_data = request.data
-        response_data = []
-        for book_data in books_data:
+        success_data = []
+        error_data = []
+        for book_data in request.data:
             serializer = BookSerializer(data=book_data)
             if serializer.is_valid():
-                genres_data = book_data.get('genres', [])
+                title = book_data.get('title')
+                existing_books = Book.objects.filter(title__iexact=title)
+                if existing_books.exists():
+                    error_data.append({
+                        "error": f"Book with title '{title}' already exists.",
+                        "book_data": book_data
+                    })
+                else:
+                    genres_data = book_data.get('genres', [])
+                    genres = []
+                    for genre_name in genres_data:
+                        genre, _ = Genre.objects.get_or_create(name=genre_name)
+                        genres.append(genre)
+                    book = serializer.save()
+                    book.genres.add(*genres)
+                    success_data.append({
+                        "success": "Book created successfully",
+                        "book_data": serializer.data
+                    })
+            else:
+                error_data.append({
+                    "error": serializer.errors,
+                    "book_data": book_data
+                })
+        response_data = {
+            "success": success_data,
+            "error": error_data
+        }
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    else:  # Single book creation
+        serializer = BookSerializer(data=request.data)
+        if serializer.is_valid():
+            title = request.data.get('title')
+            existing_books = Book.objects.filter(title__iexact=title)
+            if existing_books.exists():
+                return Response({
+                    "error": f"Book with title '{title}' already exists."
+                }, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                genres_data = request.data.get('genres', [])
                 genres = []
                 for genre_name in genres_data:
                     genre, _ = Genre.objects.get_or_create(name=genre_name)
                     genres.append(genre)
                 book = serializer.save()
                 book.genres.add(*genres)
-                response_data.append(serializer.data)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        return Response(response_data, status=status.HTTP_201_CREATED)
-    else:  # Single book creation
-        serializer = BookSerializer(data=request.data)
-        if serializer.is_valid():
-            genres_data = request.data.get('genres', [])
-            genres = []
-            for genre_name in genres_data:
-                genre, _ = Genre.objects.get_or_create(name=genre_name)
-                genres.append(genre)
-            book = serializer.save()
-            book.genres.add(*genres)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+                return Response({
+                    "success": "Book created successfully",
+                    "book_data": serializer.data
+                }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
