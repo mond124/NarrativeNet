@@ -102,23 +102,35 @@ class BulkCreateBooksAndChaptersAPIView(APIView):
 
 @api_view(['POST'])
 def createBook(request):
-    serializer = BookSerializer(data=request.data)
-    if serializer.is_valid():
-        # Check if genres exist, create if not
-        genres_data = request.data.get('genres', [])
-        genres = []
-        for genre_name in genres_data:
-            genre, _ = Genre.objects.get_or_create(name=genre_name)
-            genres.append(genre)
-
-        # Save the book with associated genres
-        book = serializer.save()
-
-        # Add genres to the book
-        book.genres.add(*genres)
-
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    if isinstance(request.data, list):  # Check if data is a list (bulk creation)
+        books_data = request.data
+        response_data = []
+        for book_data in books_data:
+            serializer = BookSerializer(data=book_data)
+            if serializer.is_valid():
+                genres_data = book_data.get('genres', [])
+                genres = []
+                for genre_name in genres_data:
+                    genre, _ = Genre.objects.get_or_create(name=genre_name)
+                    genres.append(genre)
+                book = serializer.save()
+                book.genres.add(*genres)
+                response_data.append(serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    else:  # Single book creation
+        serializer = BookSerializer(data=request.data)
+        if serializer.is_valid():
+            genres_data = request.data.get('genres', [])
+            genres = []
+            for genre_name in genres_data:
+                genre, _ = Genre.objects.get_or_create(name=genre_name)
+                genres.append(genre)
+            book = serializer.save()
+            book.genres.add(*genres)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
 def getRoutes(request):
