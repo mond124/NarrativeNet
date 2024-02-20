@@ -68,13 +68,31 @@ def searchBooks(request):
 
 class BulkCreateChaptersAPIView(APIView):
     def post(self, request, format=None):
-        chapters_data = request.data  # Assuming the JSON data is sent as the request body
-        chapters_serializer = ChapterSerializer(data=chapters_data, many=True)
-        if chapters_serializer.is_valid():
-            chapters_serializer.save()  # Save the chapters to the database
-            return Response(chapters_serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(chapters_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        chapters_data = request.data if isinstance(request.data, list) else [request.data]
+
+        response_data = {}
+        chapters_to_create = []
+
+        # Check if chapters already exist in the database
+        for chapter_data in chapters_data:
+            title = chapter_data.get('title')
+            existing_chapters = Chapter.objects.filter(title=title)
+            if existing_chapters.exists():
+                response_data.setdefault('chapters_errors', []).append(f"Chapter '{title}' already exists.")
+            else:
+                chapters_to_create.append(chapter_data)
+
+        # Create chapters if not already in the database
+        if chapters_to_create:
+            chapters_serializer = ChapterSerializer(data=chapters_to_create, many=True)
+            if chapters_serializer.is_valid():
+                chapters_serializer.save()
+                response_data['chapters'] = chapters_serializer.data
+            else:
+                response_data.setdefault('chapters_errors', []).extend(chapters_serializer.errors)
+
+        # Return the response
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
 class BulkCreateBooksAndChaptersAPIView(APIView):
     def post(self, request, format=None):
