@@ -71,25 +71,29 @@ class BulkCreateChaptersAPIView(APIView):
         chapters_data = request.data if isinstance(request.data, list) else [request.data]
 
         response_data = {}
-        chapters_to_create = []
+        new_chapters_data = []
 
-        # Check if chapters already exist in the database
+        # Retrieve existing chapters from the database
+        existing_chapter_titles = Chapter.objects.values_list('title', flat=True)
+        
+        # Filter out chapters that are not already in the database
         for chapter_data in chapters_data:
             title = chapter_data.get('title')
-            existing_chapters = Chapter.objects.filter(title=title)
-            if existing_chapters.exists():
-                response_data.setdefault('chapters_errors', []).append(f"Chapter '{title}' already exists.")
+            if title not in existing_chapter_titles:
+                new_chapters_data.append(chapter_data)
             else:
-                chapters_to_create.append(chapter_data)
+                response_data.setdefault('chapters_errors', []).append(f"Chapter '{title}' already exists.")
 
-        # Create chapters if not already in the database
-        if chapters_to_create:
-            chapters_serializer = ChapterSerializer(data=chapters_to_create, many=True)
+        # Create chapters for the new ones
+        if new_chapters_data:
+            chapters_serializer = ChapterSerializer(data=new_chapters_data, many=True)
             if chapters_serializer.is_valid():
                 chapters_serializer.save()
                 response_data['chapters'] = chapters_serializer.data
             else:
                 response_data.setdefault('chapters_errors', []).extend(chapters_serializer.errors)
+        else:
+            response_data.setdefault('chapters_errors', []).append("No new chapters to create.")
 
         # Return the response
         return Response(response_data, status=status.HTTP_201_CREATED)
