@@ -5,7 +5,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework import status
 from fuzzywuzzy import process,fuzz
-from ..models import Book, Genre
+from ..models import Book, Genre, Chapter
 from .serializers import BookSerializer, ChapterSerializer
 from django.db.models import Q
 
@@ -82,22 +82,51 @@ class BulkCreateBooksAndChaptersAPIView(APIView):
         books_data = data.get('books', [])
         chapters_data = data.get('chapters', [])
 
-        books_serializer = BookSerializer(data=books_data, many=True)
-        chapters_serializer = ChapterSerializer(data=chapters_data, many=True)
+        # Check if the data is for single book/chapter or bulk
+        is_single_book = isinstance(books_data, dict)
+        is_single_chapter = isinstance(chapters_data, dict)
 
         response_data = {}
-        if books_serializer.is_valid():
-            books_serializer.save()
-            response_data['books'] = books_serializer.data
-        else:
-            response_data['books_errors'] = books_serializer.errors
+        books_to_create = []
+        chapters_to_create = []
 
-        if chapters_serializer.is_valid():
-            chapters_serializer.save()
-            response_data['chapters'] = chapters_serializer.data
-        else:
-            response_data['chapters_errors'] = chapters_serializer.errors
+        # Check if books already exist in the database
+        for book_data in books_data:
+            title = book_data.get('title')
+            existing_books = Book.objects.filter(title=title)
+            if existing_books.exists():
+                response_data.setdefault('books_errors', []).append(f"Book '{title}' already exists.")
+            else:
+                books_to_create.append(book_data)
 
+        # Check if chapters already exist in the database
+        for chapter_data in chapters_data:
+            title = chapter_data.get('title')
+            existing_chapters = Chapter.objects.filter(title=title)
+            if existing_chapters.exists():
+                response_data.setdefault('chapters_errors', []).append(f"Chapter '{title}' already exists.")
+            else:
+                chapters_to_create.append(chapter_data)
+
+        # Create books if not already in the database
+        if books_to_create:
+            books_serializer = BookSerializer(data=books_to_create, many=True)
+            if books_serializer.is_valid():
+                books_serializer.save()
+                response_data['books'] = books_serializer.data
+            else:
+                response_data.setdefault('books_errors', []).extend(books_serializer.errors)
+
+        # Create chapters if not already in the database
+        if chapters_to_create:
+            chapters_serializer = ChapterSerializer(data=chapters_to_create, many=True)
+            if chapters_serializer.is_valid():
+                chapters_serializer.save()
+                response_data['chapters'] = chapters_serializer.data
+            else:
+                response_data.setdefault('chapters_errors', []).extend(chapters_serializer.errors)
+
+        # Return the response
         return Response(response_data, status=status.HTTP_201_CREATED)
 
 @api_view(['POST'])
