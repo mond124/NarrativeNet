@@ -28,11 +28,27 @@ class MyTokenObtainPairView(TokenObtainPairView):
 @api_view(['GET'])
 def getBooks(request):
     """
-    API endpoint to retrieve all books.
+    API endpoint to retrieve books with sorting and filtering.
     """
-    books = Book.objects.all()
+    # Get query parameters for sorting and filtering
+    sort_by = request.query_params.get('sort_by', 'title')  # Default sorting by title
+    genre = request.query_params.get('genre', None)  # Filter by genre
+
+    # Retrieve books from the database based on filtering criteria
+    if genre:
+        books = Book.objects.filter(genres__name__iexact=genre)
+    else:
+        books = Book.objects.all()
+
+    # Sort books based on sorting criteria
+    if sort_by == 'title':
+        books = books.order_by('title')
+    elif sort_by == 'rating':
+        books = books.order_by('-rating')  # Sort by rating in descending order
+
+    # Serialize the queryset and return the response
     serializer = BookSerializer(books, many=True)
-    return Response(serializer.data)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
 def getBooksByGenre(request, genre_name):
