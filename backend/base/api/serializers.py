@@ -17,7 +17,7 @@ class BookSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Book
-        fields = ['book_id', 'title', 'synopsis', 'views', 'rating', 'genres', 'cover_image_url']
+        fields = ['book_id', 'title', 'synopsis', 'views', 'rating', 'author', 'genres', 'cover_image_url']
 
     def get_cover_image_url(self, obj):
         if obj.cover_image:
