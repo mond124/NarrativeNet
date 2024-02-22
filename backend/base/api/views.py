@@ -131,6 +131,10 @@ class BulkCreateBooksAndChaptersAPIView(APIView):
         response_data = {}
         books_to_create = []
         chapters_to_create = []
+        if is_single_book:
+            books_data = [books_data]
+        if is_single_chapter:
+            chapters_data = [chapters_data]
         for book_data in books_data:
             title = book_data.get('title')
             existing_books = Book.objects.filter(title=title)
