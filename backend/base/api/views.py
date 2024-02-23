@@ -8,6 +8,8 @@ from fuzzywuzzy import process,fuzz
 from ..models import Book, Genre, Chapter
 from .serializers import BookSerializer, ChapterSerializer
 from django.db.models import Q
+from django.db.models import Count
+import matplotlib.pyplot as plt
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
@@ -240,6 +242,36 @@ def createBook(request):
     except Exception as e:
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@api_view(['GET'])
+def getGenreDistribution(request):
+    """
+    API endpoint to retrieve the distribution of books by genre.
+    """
+    try:
+        # Query database to get the count of books in each genre
+        genre_counts = Book.objects.values('genres__name').annotate(count=Count('id'))
+
+        # Prepare data for plotting
+        genres = [entry['genres__name'] for entry in genre_counts]
+        counts = [entry['count'] for entry in genre_counts]
+
+        # Create bar chart
+        plt.bar(genres, counts)
+        plt.xlabel('Genre')
+        plt.ylabel('Number of Books')
+        plt.title('Distribution of Books by Genre')
+        plt.xticks(rotation=45, ha='right')  # Rotate x-axis labels for better readability
+
+        # Save the plot to a file or convert it to an image and return it in the API response
+        plt.tight_layout()
+        plt.savefig('genre_distribution.png')  # Save the plot as an image file
+        plt.close()  # Close the plot to free up memory
+
+        # Optionally, return the file path or image data in the API response
+        return Response({'message': 'Genre distribution plot generated successfully.', 'plot_path': 'genre_distribution.png'})
+    except Exception as e:
+        return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 @api_view(['GET'])
 def getRoutes(request):
     """
