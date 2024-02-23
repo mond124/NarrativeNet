@@ -33,23 +33,19 @@ def getBooks(request):
     API endpoint to retrieve books with sorting and filtering.
     """
     try:
-        # Get query parameters for sorting and filtering
-        sort_by = request.query_params.get('sort_by', 'title')  # Default sorting by title
-        genre = request.query_params.get('genre', None)  # Filter by genre
+        sort_by = request.query_params.get('sort_by', 'title')  
+        genre = request.query_params.get('genre', None)  
 
-        # Retrieve books from the database based on filtering criteria
         if genre:
             books = Book.objects.filter(genres__name__iexact=genre)
         else:
             books = Book.objects.all()
 
-        # Sort books based on sorting criteria
         if sort_by == 'title':
             books = books.order_by('title')
         elif sort_by == 'rating':
-            books = books.order_by('-rating')  # Sort by rating in descending order
+            books = books.order_by('-rating')  
 
-        # Serialize the queryset and return the response
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     except Exception as e:
@@ -248,26 +244,21 @@ def getGenreDistribution(request):
     API endpoint to retrieve the distribution of books by genre.
     """
     try:
-        # Query database to get the count of books in each genre
         genre_counts = Book.objects.values('genres__name').annotate(count=Count('id'))
 
-        # Prepare data for plotting
         genres = [entry['genres__name'] for entry in genre_counts]
         counts = [entry['count'] for entry in genre_counts]
 
-        # Create bar chart
         plt.bar(genres, counts)
         plt.xlabel('Genre')
         plt.ylabel('Number of Books')
         plt.title('Distribution of Books by Genre')
-        plt.xticks(rotation=45, ha='right')  # Rotate x-axis labels for better readability
+        plt.xticks(rotation=45, ha='right')  
 
-        # Save the plot to a file or convert it to an image and return it in the API response
         plt.tight_layout()
-        plt.savefig('genre_distribution.png')  # Save the plot as an image file
-        plt.close()  # Close the plot to free up memory
+        plt.savefig('genre_distribution.png')  
+        plt.close()  
 
-        # Optionally, return the file path or image data in the API response
         return Response({'message': 'Genre distribution plot generated successfully.', 'plot_path': 'genre_distribution.png'})
     except Exception as e:
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
