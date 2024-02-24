@@ -9,6 +9,7 @@ from ..models import Book, Genre, Chapter
 from .serializers import BookSerializer, ChapterSerializer
 from django.db.models import Q
 from django.db.models import Count
+from plotly import graph_objs as go
 import matplotlib.pyplot as plt
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -249,17 +250,21 @@ def getGenreDistribution(request):
         genres = [entry['genres__name'] for entry in genre_counts]
         counts = [entry['count'] for entry in genre_counts]
 
+        # Prepare data for Plotly.js
+        data_for_plotly = go.Bar(x=genres, y=counts)
+
+        # Save the plot to a file
         plt.bar(genres, counts)
         plt.xlabel('Genre')
         plt.ylabel('Number of Books')
         plt.title('Distribution of Books by Genre')
         plt.xticks(rotation=45, ha='right')  
-
         plt.tight_layout()
-        plt.savefig('genre_distribution.png')  
+        plot_path = 'genre_distribution.png'
+        plt.savefig(plot_path)  
         plt.close()  
 
-        return Response({'message': 'Genre distribution plot generated successfully.', 'plot_path': 'genre_distribution.png'})
+        return Response({'plot_data': data_for_plotly, 'plot_path': plot_path})
     except Exception as e:
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
