@@ -1,15 +1,14 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
+from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework import status
-from fuzzywuzzy import process,fuzz
+from fuzzywuzzy import process, fuzz
+from plotly import graph_objs as go
 from ..models import Book, Genre, Chapter
 from .serializers import BookSerializer, ChapterSerializer
-from django.db.models import Q
-from django.db.models import Count
-from plotly import graph_objs as go
+from django.db.models import Q, Count
 import matplotlib.pyplot as plt
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -31,16 +30,13 @@ class MyTokenObtainPairView(TokenObtainPairView):
 @api_view(['GET'])
 def getBooks(request):
     """
-    API endpoint to retrieve books with sorting and filtering.
+    Retrieve books with sorting and filtering.
     """
     try:
         sort_by = request.query_params.get('sort_by', 'title')  
         genre = request.query_params.get('genre', None)  
 
-        if genre:
-            books = Book.objects.filter(genres__name__iexact=genre)
-        else:
-            books = Book.objects.all()
+        books = Book.objects.filter(genres__name__iexact=genre) if genre else Book.objects.all()
 
         if sort_by == 'title':
             books = books.order_by('title')
@@ -55,7 +51,7 @@ def getBooks(request):
 @api_view(['GET'])
 def getBooksByGenre(request, genre_name):
     """
-    API endpoint to retrieve books by genre.
+    Retrieve books by genre.
     """
     try:
         genres = [genre.strip() for genre in genre_name.split(',')]
@@ -70,7 +66,7 @@ def getBooksByGenre(request, genre_name):
 @api_view(['GET'])
 def searchBooks(request):
     """
-    API endpoint to search books by title or synopsis.
+    Search books by title or synopsis.
     """
     try:
         query = request.query_params.get('q', '')
@@ -79,11 +75,7 @@ def searchBooks(request):
             titles = [book.title for book in results]
             fuzzy_results = process.extract(query, titles, limit=5)
 
-            fuzzy_matching_results = []
-            for title, similarity in fuzzy_results:
-                if similarity >= 60:
-                    book = results.get(title=title)
-                    fuzzy_matching_results.append(book)
+            fuzzy_matching_results = [results.get(title=title) for title, similarity in fuzzy_results if similarity >= 60]
 
             fuzzy_matching_results.sort(key=lambda x: fuzz.ratio(query.lower(), x.title.lower()), reverse=True)
             serializer = BookSerializer(fuzzy_matching_results, many=True)
@@ -95,7 +87,7 @@ def searchBooks(request):
 
 class BulkCreateChaptersAPIView(APIView):
     """
-    API endpoint to bulk create chapters.
+    Bulk create chapters.
     """
     def post(self, request, format=None):
         try:
@@ -124,7 +116,7 @@ class BulkCreateChaptersAPIView(APIView):
 
 class BulkCreateBooksAndChaptersAPIView(APIView):
     """
-    API endpoint to bulk create books and chapters.
+    Bulk create books and chapters.
     """
     def post(self, request, format=None):
         try:
@@ -175,7 +167,7 @@ class BulkCreateBooksAndChaptersAPIView(APIView):
 @api_view(['POST'])
 def createBook(request):
     """
-    API endpoint to create a book.
+    Create a book.
     """
     try:
         if isinstance(request.data, list):
@@ -193,10 +185,7 @@ def createBook(request):
                         })
                     else:
                         genres_data = book_data.get('genres', [])
-                        genres = []
-                        for genre_name in genres_data:
-                            genre, _ = Genre.objects.get_or_create(name=genre_name)
-                            genres.append(genre)
+                        genres = [Genre.objects.get_or_create(name=genre_name)[0] for genre_name in genres_data]
                         book = serializer.save()
                         book.genres.add(*genres)
                         success_data.append({
@@ -224,10 +213,7 @@ def createBook(request):
                     }, status=status.HTTP_400_BAD_REQUEST)
                 else:
                     genres_data = request.data.get('genres', [])
-                    genres = []
-                    for genre_name in genres_data:
-                        genre, _ = Genre.objects.get_or_create(name=genre_name)
-                        genres.append(genre)
+                    genres = [Genre.objects.get_or_create(name=genre_name)[0] for genre_name in genres_data]
                     book = serializer.save()
                     book.genres.add(*genres)
                     return Response({
@@ -242,7 +228,7 @@ def createBook(request):
 @api_view(['GET'])
 def getGenreDistribution(request):
     """
-    API endpoint to retrieve the distribution of books by genre.
+    Retrieve the distribution of books by genre.
     """
     try:
         genre_counts = Book.objects.values('genres__name').annotate(count=Count('id'))
@@ -254,7 +240,7 @@ def getGenreDistribution(request):
         data_for_plotly = go.Bar(x=genres, y=counts)
 
         if 'image' in request.query_params:
-            # If the request includes 'image' parameter, generate and return the image
+            # Generate and return the image if requested
             plt.bar(genres, counts)
             plt.xlabel('Genre')
             plt.ylabel('Number of Books')
@@ -267,15 +253,15 @@ def getGenreDistribution(request):
 
             return Response({'plot_path': plot_path})
 
-        # Otherwise, return the data suitable for Plotly.js
+        # Return the data suitable for Plotly.js
         return Response({'plot_data': data_for_plotly})
     except Exception as e:
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
 @api_view(['GET'])
 def getRoutes(request):
     """
-    API endpoint to retrieve available routes.
+    Retrieve available routes.
     """
     routes = [
         '/api/token',
