@@ -253,18 +253,22 @@ def getGenreDistribution(request):
         # Prepare data for Plotly.js
         data_for_plotly = go.Bar(x=genres, y=counts)
 
-        # Save the plot to a file
-        plt.bar(genres, counts)
-        plt.xlabel('Genre')
-        plt.ylabel('Number of Books')
-        plt.title('Distribution of Books by Genre')
-        plt.xticks(rotation=45, ha='right')  
-        plt.tight_layout()
-        plot_path = 'genre_distribution.png'
-        plt.savefig(plot_path)  
-        plt.close()  
+        if 'image' in request.query_params:
+            # If the request includes 'image' parameter, generate and return the image
+            plt.bar(genres, counts)
+            plt.xlabel('Genre')
+            plt.ylabel('Number of Books')
+            plt.title('Distribution of Books by Genre')
+            plt.xticks(rotation=45, ha='right')  
+            plt.tight_layout()
+            plot_path = 'genre_distribution.png'
+            plt.savefig(plot_path)  
+            plt.close()  
 
-        return Response({'plot_data': data_for_plotly, 'plot_path': plot_path})
+            return Response({'plot_path': plot_path})
+
+        # Otherwise, return the data suitable for Plotly.js
+        return Response({'plot_data': data_for_plotly})
     except Exception as e:
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
