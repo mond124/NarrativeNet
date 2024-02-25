@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.exceptions import ValidationError
 from fuzzywuzzy import process, fuzz
 from plotly import graph_objs as go
 from ..models import Book, Genre, Chapter
@@ -35,6 +36,10 @@ def getBooks(request):
     try:
         sort_by = request.query_params.get('sort_by', 'title')  
         genre = request.query_params.get('genre', None)  
+
+        # Validate sort_by parameter
+        if sort_by not in ['title', 'rating']:
+            raise ValidationError("Invalid value for 'sort_by'. It must be either 'title' or 'rating'.")
 
         books = Book.objects.filter(genres__name__iexact=genre) if genre else Book.objects.all()
 
