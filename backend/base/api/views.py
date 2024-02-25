@@ -60,6 +60,11 @@ def getBooksByGenre(request, genre_name):
     """
     try:
         genres = [genre.strip() for genre in genre_name.split(',')]
+        # Validate genre_name parameter
+        for genre in genres:
+            if not Genre.objects.filter(name__iexact=genre).exists():
+                raise ValidationError(f"Genre '{genre}' does not exist.")
+        
         books = Book.objects.filter(genres__name__in=genres).distinct()
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
