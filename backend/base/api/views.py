@@ -80,18 +80,21 @@ def searchBooks(request):
     """
     try:
         query = request.query_params.get('q', '')
-        if query:
-            results = Book.objects.filter(Q(title__icontains=query) | Q(synopsis__icontains=query))
-            titles = [book.title for book in results]
-            fuzzy_results = process.extract(query, titles, limit=5)
+        if not query:
+            raise ValidationError("Please provide a search query.")
 
-            fuzzy_matching_results = [results.get(title=title) for title, similarity in fuzzy_results if similarity >= 60]
+        results = Book.objects.filter(Q(title__icontains=query) | Q(synopsis__icontains=query))
+        if not results.exists():
+            return Response({"detail": "No books found for the search query."}, status=status.HTTP_404_NOT_FOUND)
+        
+        titles = [book.title for book in results]
+        fuzzy_results = process.extract(query, titles, limit=5)
 
-            fuzzy_matching_results.sort(key=lambda x: fuzz.ratio(query.lower(), x.title.lower()), reverse=True)
-            serializer = BookSerializer(fuzzy_matching_results, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        else:
-            return Response({"detail": "Please provide a search query."}, status=status.HTTP_400_BAD_REQUEST)
+        fuzzy_matching_results = [results.get(title=title) for title, similarity in fuzzy_results if similarity >= 60]
+
+        fuzzy_matching_results.sort(key=lambda x: fuzz.ratio(query.lower(), x.title.lower()), reverse=True)
+        serializer = BookSerializer(fuzzy_matching_results, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
