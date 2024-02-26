@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from ..models import Book,Genre,Chapter
+from ..models import Book,Genre,Chapter,User, UserProfile
 
 class GenreSerializer(serializers.ModelSerializer):
     class Meta:
@@ -27,3 +27,15 @@ class BookSerializer(serializers.ModelSerializer):
         
     def get_genres(self, obj):
         return [genre.name for genre in obj.genres.all()]
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = '__all__'
+
+class UserSerializer(serializers.ModelSerializer):
+    profile = UserProfileSerializer()
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'profile']
