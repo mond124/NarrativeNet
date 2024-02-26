@@ -73,3 +73,9 @@ class Chapter(models.Model):
 
     def __str__(self):
         return f"{self.book.title}"
+    
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    favorite_genres = models.ManyToManyField(Genre)
+    favorite_authors = models.ManyToManyField(Author)  # Updated to reference the Author model
+    favorite_books = models.ManyToManyField(Book)
