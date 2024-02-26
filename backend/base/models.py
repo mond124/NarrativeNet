@@ -1,7 +1,27 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.contrib.auth.models import User
 
 # Create your models here.
+
+class Author(models.Model):
+    name = models.CharField(max_length=255, unique=True)  # Assuming author names are unique
+
+    def __str__(self):
+        return self.name
+
+    def clean(self):
+        # Check if an author with the same name exists (case-insensitive)
+        existing_author = Author.objects.filter(name__iexact=self.name).first()
+        if existing_author and existing_author != self:
+            raise ValidationError({'name': 'Author with this name already exists.'})
+
+    def save(self, *args, **kwargs):
+        # Ensure the name is in title case
+        self.name = self.name.title()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
 
 class Genre(models.Model):
     name = models.CharField(max_length=50, unique=True)
@@ -24,7 +44,7 @@ class Genre(models.Model):
 class Book(models.Model):
     book_id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=255, unique=True)
-    author = models.CharField(max_length=255, default='')  # New field for author
+    author = models.ForeignKey(Author, on_delete=models.CASCADE)  # Updated field for author
     synopsis = models.TextField()
     views = models.IntegerField()
     rating = models.DecimalField(max_digits=3, decimal_places=1)
