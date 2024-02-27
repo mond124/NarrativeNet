@@ -14,10 +14,12 @@ class ChapterSerializer(serializers.ModelSerializer):
 class BookSerializer(serializers.ModelSerializer):
     genres = GenreSerializer(many=True, read_only=True)
     cover_image_url = serializers.SerializerMethodField()
+    author = serializers.StringRelatedField()
+    user_profile = serializers.SerializerMethodField()
 
     class Meta:
         model = Book
-        fields = ['book_id', 'title', 'synopsis', 'views', 'rating', 'author', 'genres', 'cover_image_url']
+        fields = ['book_id', 'title', 'synopsis', 'views', 'rating', 'author', 'genres', 'cover_image_url', 'user_profile']
 
     def get_cover_image_url(self, obj):
         if obj.cover_image:
@@ -27,6 +29,9 @@ class BookSerializer(serializers.ModelSerializer):
         
     def get_genres(self, obj):
         return [genre.name for genre in obj.genres.all()]
+    
+    def get_user_profile(self, obj):
+        return obj.author.userprofile.id if obj.author.userprofile else None
 
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
