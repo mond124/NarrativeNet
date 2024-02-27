@@ -31,7 +31,7 @@ class BookSerializer(serializers.ModelSerializer):
         return [genre.name for genre in obj.genres.all()]
     
     def get_user_profile(self, obj):
-        return obj.author.userprofile.id if obj.author.userprofile else None
+        return UserProfileSerializer(obj.author.userprofile).data if obj.author.userprofile else None
 
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
