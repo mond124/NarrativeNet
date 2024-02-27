@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from ..models import Book,Genre,Chapter,User, UserProfile
+from ..models import Book,Genre,Chapter,User, UserProfile,Author
 
 class GenreSerializer(serializers.ModelSerializer):
     class Meta:
@@ -33,11 +33,25 @@ class BookSerializer(serializers.ModelSerializer):
     def get_user_profile(self, obj):
         return UserProfileSerializer(obj.author.userprofile).data if obj.author.userprofile else None
 
+class AuthorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Author
+        fields = ['name']
+
 class UserProfileSerializer(serializers.ModelSerializer):
+    favorite_genres = GenreSerializer(many=True)
+    favorite_authors = serializers.SerializerMethodField()
+    favorite_books = serializers.SerializerMethodField()
+
     class Meta:
         model = UserProfile
-        fields = '__all__'
+        fields = ['user', 'favorite_genres', 'favorite_authors', 'favorite_books']
 
+    def get_favorite_authors(self, obj):
+        return AuthorSerializer(obj.favorite_authors.all(), many=True).data
+
+    def get_favorite_books(self, obj):
+        return BookSerializer(obj.favorite_books.all(), many=True).data
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer()
 

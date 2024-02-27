@@ -31,7 +31,7 @@ class MyTokenObtainPairView(TokenObtainPairView):
 @api_view(['GET'])
 def getBooks(request):
     """
-    Retrieve books with sorting and filtering.
+    Retrieve books with sorting and filtering including user profile data.
     """
     try:
         sort_by = request.query_params.get('sort_by', 'title')  
@@ -41,7 +41,7 @@ def getBooks(request):
         if sort_by not in ['title', 'rating']:
             raise ValidationError("Invalid value for 'sort_by'. It must be either 'title' or 'rating'.")
 
-        books = Book.objects.filter(genres__name__iexact=genre) if genre else Book.objects.all()
+        books = Book.objects.select_related('author__userprofile').filter(genres__name__iexact=genre) if genre else Book.objects.select_related('author__userprofile').all()
 
         if sort_by == 'title':
             books = books.order_by('title')
@@ -56,7 +56,7 @@ def getBooks(request):
 @api_view(['GET'])
 def getBooksByGenre(request, genre_name):
     """
-    Retrieve books by genre.
+    Retrieve books by genre including user profile data.
     """
     try:
         genres = [genre.strip() for genre in genre_name.split(',')]
@@ -65,7 +65,7 @@ def getBooksByGenre(request, genre_name):
             if not Genre.objects.filter(name__iexact=genre).exists():
                 raise ValidationError(f"Genre '{genre}' does not exist.")
         
-        books = Book.objects.filter(genres__name__in=genres).distinct()
+        books = Book.objects.select_related('author__userprofile').filter(genres__name__in=genres).distinct()
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     except Book.DoesNotExist:
