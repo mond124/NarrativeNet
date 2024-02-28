@@ -11,6 +11,7 @@ from plotly import graph_objs as go
 from ..models import Book, Genre, Chapter,UserProfile
 from .serializers import BookSerializer, ChapterSerializer, UserProfileSerializer
 from django.db.models import Q, Count
+from django.http import Http404
 import matplotlib.pyplot as plt
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -276,6 +277,15 @@ class UserProfileDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+@api_view(['GET'])
+def getUserProfile(request, user_id):
+    try:
+        user_profile = UserProfile.objects.get(user_id=user_id)
+        serializer = UserProfileSerializer(user_profile)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except UserProfile.DoesNotExist:
+        raise Http404("User profile does not exist")
 
 @api_view(['GET'])
 def getRoutes(request):
