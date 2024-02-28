@@ -5,10 +5,11 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.exceptions import ValidationError
+from rest_framework import generics, permissions
 from fuzzywuzzy import process, fuzz
 from plotly import graph_objs as go
-from ..models import Book, Genre, Chapter
-from .serializers import BookSerializer, ChapterSerializer
+from ..models import Book, Genre, Chapter,UserProfile
+from .serializers import BookSerializer, ChapterSerializer, UserProfileSerializer
 from django.db.models import Q, Count
 import matplotlib.pyplot as plt
 
@@ -270,6 +271,11 @@ def getGenreDistribution(request):
         return Response({'plot_data': data_for_plotly})
     except Exception as e:
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class UserProfileDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = UserProfile.objects.all()
+    serializer_class = UserProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
 @api_view(['GET'])
 def getRoutes(request):
