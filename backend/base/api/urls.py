@@ -8,6 +8,8 @@ urlpatterns = [
     path('',views.getRoutes),
     path('token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('user-profile/<int:user_id>/', views.getUserProfile, name='get_user_profile'),
+    path('user-profile/<int:user_id>/update/', views.updateUserProfile, name='update_user_profile'),
     path('books/', getBooks, name='get_books'),
     path('books/<str:genre_name>/', getBooksByGenre, name='get_books_by_genre'),
     path('search-books/', views.searchBooks, name='search_books'),
