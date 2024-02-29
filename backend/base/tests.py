@@ -41,5 +41,16 @@ class TestBookViews(TestCase):
         response = self.client.get(reverse('search_books') + '?q=fantasy')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Add more assertions to check the response data
+    def test_create_book(self):
+        # Test creating a book without authentication
+        data = {'title': 'Test Book', 'author': 'Test Author', 'synopsis': 'Test Synopsis', 'views': 0, 'rating': 0}
+        response = self.client.post(reverse('create_book'), data)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # Test creating a book with authentication
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.access_token}')
+        response = self.client.post(reverse('create_book'), data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # Add more assertions to check the response data
     
     
