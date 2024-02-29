@@ -90,3 +90,10 @@ class TestGetGenreDistribution(APITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Add more assertions based on expected response data
+
+class TestGetRoutes(APITestCase):
+    def test_get_routes(self):
+        url = reverse('get_routes')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Add more assertions based on expected response data
