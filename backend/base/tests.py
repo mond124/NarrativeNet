@@ -31,5 +31,15 @@ class TestBookViews(TestCase):
         response = self.client.get(reverse('get_books_by_genre', kwargs={'genre_name': 'fantasy'}))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Add more assertions to check the response data
+    def test_search_books(self):
+        # Test searching books without authentication
+        response = self.client.get(reverse('search_books') + '?q=fantasy')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # Test searching books with authentication
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.access_token}')
+        response = self.client.get(reverse('search_books') + '?q=fantasy')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Add more assertions to check the response data
     
     
