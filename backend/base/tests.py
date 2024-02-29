@@ -64,3 +64,22 @@ class TestBulkCreateChaptersAPIView(APITestCase):
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Chapter.objects.count(), 3)
+
+class TestBulkCreateBooksAndChaptersAPIView(APITestCase):
+    def test_bulk_create_books_and_chapters(self):
+        url = reverse('bulk_create_books_and_chapters')
+        data = {
+            "books": [
+                {"title": "Book 1", "author": 1, "synopsis": "Synopsis 1", "views": 100, "rating": 4.5},
+                {"title": "Book 2", "author": 2, "synopsis": "Synopsis 2", "views": 200, "rating": 4.0}
+            ],
+            "chapters": [
+                {"title": "Chapter 1", "file": "chapter1.pdf", "book": 1},
+                {"title": "Chapter 2", "file": "chapter2.pdf", "book": 1},
+                {"title": "Chapter 3", "file": "chapter3.pdf", "book": 2}
+            ]
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Book.objects.count(), 2)
+        self.assertEqual(Chapter.objects.count(), 3)
