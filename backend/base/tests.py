@@ -53,4 +53,14 @@ class TestBookViews(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         # Add more assertions to check the response data
     
-    
+class TestBulkCreateChaptersAPIView(APITestCase):
+    def test_bulk_create_chapters(self):
+        url = reverse('bulk_create_chapters')
+        data = [
+            {"title": "Chapter 1", "file": "chapter1.pdf", "book": 1},
+            {"title": "Chapter 2", "file": "chapter2.pdf", "book": 1},
+            {"title": "Chapter 3", "file": "chapter3.pdf", "book": 2}
+        ]
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Chapter.objects.count(), 3)
