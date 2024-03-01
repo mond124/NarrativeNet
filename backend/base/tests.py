@@ -83,3 +83,17 @@ class TestBulkCreateBooksAndChaptersAPIView(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Book.objects.count(), 2)
         self.assertEqual(Chapter.objects.count(), 3)
+
+class TestGetGenreDistribution(APITestCase):
+    def test_get_genre_distribution(self):
+        url = reverse('get_genre_distribution')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Add more assertions based on expected response data
+
+class TestGetRoutes(APITestCase):
+    def test_get_routes(self):
+        url = reverse('get_routes')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Add more assertions based on expected response data
