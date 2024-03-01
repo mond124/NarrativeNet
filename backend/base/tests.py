@@ -11,6 +11,7 @@ class TestBookViews(TestCase):
         self.client = APIClient()
         self.user = User.objects.create_user(username='testuser', email='test@example.com', password='testpassword')
         self.access_token = AccessToken.for_user(self.user)
+        
     def test_get_books(self):
         # Test retrieving books without authentication
         response = self.client.get(reverse('get_books'))
@@ -21,6 +22,7 @@ class TestBookViews(TestCase):
         response = self.client.get(reverse('get_books'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Add more assertions to check the response data
+    
     def test_get_books_by_genre(self):
         # Test retrieving books by genre without authentication
         response = self.client.get(reverse('get_books_by_genre', kwargs={'genre_name': 'fantasy'}))
@@ -31,6 +33,7 @@ class TestBookViews(TestCase):
         response = self.client.get(reverse('get_books_by_genre', kwargs={'genre_name': 'fantasy'}))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Add more assertions to check the response data
+    
     def test_search_books(self):
         # Test searching books without authentication
         response = self.client.get(reverse('search_books') + '?q=fantasy')
@@ -41,6 +44,7 @@ class TestBookViews(TestCase):
         response = self.client.get(reverse('search_books') + '?q=fantasy')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Add more assertions to check the response data
+    
     def test_create_book(self):
         # Test creating a book without authentication
         data = {'title': 'Test Book', 'author': 'Test Author', 'synopsis': 'Test Synopsis', 'views': 0, 'rating': 0}
@@ -52,7 +56,7 @@ class TestBookViews(TestCase):
         response = self.client.post(reverse('create_book'), data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         # Add more assertions to check the response data
-    
+
 class TestBulkCreateChaptersAPIView(APITestCase):
     def test_bulk_create_chapters(self):
         url = reverse('bulk_create_chapters')
