@@ -88,8 +88,15 @@ class TestChapterViews(APITestCase):
         self.assertEqual(Chapter.objects.count(), 3)
 
 
-class TestBulkCreateBooksAndChaptersAPIView(APITestCase):
+class TestBookChapterBulkCreation(APITestCase):
+    """
+    Test case for bulk creation of books and chapters.
+    """
+
     def test_bulk_create_books_and_chapters(self):
+        """
+        Test bulk creation of books and chapters.
+        """
         url = reverse('bulk_create_books_and_chapters')
         data = {
             "books": [
@@ -106,6 +113,7 @@ class TestBulkCreateBooksAndChaptersAPIView(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Book.objects.count(), 2)
         self.assertEqual(Chapter.objects.count(), 3)
+
 
 class TestGetGenreDistribution(APITestCase):
     def test_get_genre_distribution(self):
