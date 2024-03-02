@@ -6,18 +6,29 @@ from .models import Book, Genre, Chapter, Author
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import AccessToken
 
+
 class TestBookViews(TestCase):
-    def setUp(self):
-        self.client = APIClient()
-        self.user = User.objects.create_user(username='testuser', email='test@example.com', password='testpassword')
-        self.access_token = AccessToken.for_user(self.user)
-        
-    def test_get_books(self):
-        # Test retrieving books without authentication
+    """
+    Test case for Book views.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.client = APIClient()
+        cls.user = User.objects.create_user(username='testuser', email='test@example.com', password='testpassword')
+        cls.access_token = AccessToken.for_user(cls.user)
+
+    def test_retrieve_books_without_authentication(self):
+        """
+        Test retrieving books without authentication.
+        """
         response = self.client.get(reverse('get_books'))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-        # Test retrieving books with authentication
+    def test_retrieve_books_with_authentication(self):
+        """
+        Test retrieving books with authentication.
+        """
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {self.access_token}')
         response = self.client.get(reverse('get_books'))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
