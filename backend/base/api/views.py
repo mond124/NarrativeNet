@@ -8,7 +8,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework import generics, permissions
 from fuzzywuzzy import process, fuzz
 from plotly import graph_objs as go
-from ..models import Book, Genre, Chapter,UserProfile
+from ..models import Book, Genre, Chapter, UserProfile
 from .serializers import BookSerializer, ChapterSerializer, UserProfileSerializer
 from django.db.models import Q, Count
 from django.http import Http404
