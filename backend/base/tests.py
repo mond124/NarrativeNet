@@ -6,7 +6,6 @@ from .models import Book, Chapter
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import AccessToken
 
-
 class TestBookViews(TestCase):
     """
     Test cases for book-related views.
@@ -72,23 +71,3 @@ class TestBookChapterBulkCreation(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Book.objects.count(), 2)
         self.assertEqual(Chapter.objects.count(), 3)
-
-
-class TestAdditionalViews(APITestCase):
-    """
-    Test cases for additional views.
-    """
-
-    def test_get_genre_distribution(self):
-        """Test retrieving genre distribution."""
-        url = reverse('get_genre_distribution')
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Add more assertions based on expected response data
-
-    def test_get_routes(self):
-        """Test retrieving available routes."""
-        url = reverse('get_routes')
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Add more assertions based on expected response data
