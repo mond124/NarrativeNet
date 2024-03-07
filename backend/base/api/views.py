@@ -298,6 +298,20 @@ def updateUserProfile(request, user_id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except UserProfile.DoesNotExist:
         raise Http404("User profile does not exist")
+    
+@api_view(['GET'])
+def getChaptersByBook(request, book_id):
+    """
+    Retrieve chapters by book.
+    """
+    try:
+        chapters = Chapter.objects.filter(book_id=book_id)
+        serializer = ChapterSerializer(chapters, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Chapter.DoesNotExist:
+        return Response({"detail": "Chapters not found for the specified book."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 def getRoutes(request):
