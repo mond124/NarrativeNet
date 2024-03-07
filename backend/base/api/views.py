@@ -189,6 +189,13 @@ def createBook(request):
             success_data = []
             error_data = []
             for book_data in request.data:
+                if 'author' not in book_data:
+                    error_data.append({
+                        "error": "Book must have an author.",
+                        "book_data": book_data
+                    })
+                    continue
+                
                 serializer = BookSerializer(data=book_data)
                 if serializer.is_valid():
                     title = book_data.get('title')
@@ -218,6 +225,9 @@ def createBook(request):
             }
             return Response(response_data, status=status.HTTP_201_CREATED)
         else:
+            if 'author' not in request.data:
+                return Response({"detail": "Book must have an author."}, status=status.HTTP_400_BAD_REQUEST)
+
             serializer = BookSerializer(data=request.data)
             if serializer.is_valid():
                 title = request.data.get('title')
