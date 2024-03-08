@@ -189,6 +189,13 @@ def createBook(request):
             success_data = []
             error_data = []
             for book_data in request.data:
+                if 'author' not in book_data:
+                    error_data.append({
+                        "error": "Book must have an author.",
+                        "book_data": book_data
+                    })
+                    continue
+                
                 serializer = BookSerializer(data=book_data)
                 if serializer.is_valid():
                     title = book_data.get('title')
@@ -218,6 +225,9 @@ def createBook(request):
             }
             return Response(response_data, status=status.HTTP_201_CREATED)
         else:
+            if 'author' not in request.data:
+                return Response({"detail": "Book must have an author."}, status=status.HTTP_400_BAD_REQUEST)
+
             serializer = BookSerializer(data=request.data)
             if serializer.is_valid():
                 title = request.data.get('title')
@@ -298,6 +308,20 @@ def updateUserProfile(request, user_id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except UserProfile.DoesNotExist:
         raise Http404("User profile does not exist")
+    
+@api_view(['GET'])
+def getChaptersByBook(request, book_id):
+    """
+    Retrieve chapters by book.
+    """
+    try:
+        chapters = Chapter.objects.filter(book_id=book_id)
+        serializer = ChapterSerializer(chapters, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Chapter.DoesNotExist:
+        return Response({"detail": "Chapters not found for the specified book."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 def getRoutes(request):
