@@ -8,7 +8,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework import generics, permissions
 from fuzzywuzzy import process, fuzz
 from plotly import graph_objs as go
-from ..models import Book, Genre, Chapter, UserProfile
+from ..models import Book, Genre, Chapter, UserProfile, Author
 from .serializers import BookSerializer, ChapterSerializer, UserProfileSerializer
 from django.db.models import Q, Count
 from django.http import Http404
@@ -197,6 +197,15 @@ def createBook(request):
                     })
                     continue
                 
+                # Extract author name from the request data
+                author_name = book_data.pop('author')
+                
+                # Check if the Author object exists or create a new one
+                author, _ = Author.objects.get_or_create(name=author_name)
+                
+                # Add the author object back to the book_data dictionary
+                book_data['author'] = author.id
+                
                 serializer = BookSerializer(data=book_data)
                 if serializer.is_valid():
                     title = book_data.get('title')
@@ -229,6 +238,15 @@ def createBook(request):
             if 'author' not in request.data:
                 return Response({"detail": "Book must have an author."}, status=status.HTTP_400_BAD_REQUEST)
 
+            # Extract author name from the request data
+            author_name = request.data.pop('author')
+            
+            # Check if the Author object exists or create a new one
+            author, _ = Author.objects.get_or_create(name=author_name)
+            
+            # Add the author object back to the request data dictionary
+            request.data['author'] = author.id
+            
             serializer = BookSerializer(data=request.data)
             if serializer.is_valid():
                 title = request.data.get('title')
