@@ -185,6 +185,7 @@ def createBook(request):
     Create a book.
     """
     try:
+        print("Request Data:", request.data)  # Add this line to print request data
         if isinstance(request.data, list):
             success_data = []
             error_data = []
