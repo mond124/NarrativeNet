@@ -13,6 +13,7 @@ from .serializers import BookSerializer, ChapterSerializer, UserProfileSerialize
 from django.db.models import Q, Count
 from django.http import Http404
 import matplotlib.pyplot as plt
+import logging
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
@@ -179,6 +180,7 @@ class BulkCreateBooksAndChaptersAPIView(APIView):
         except Exception as e:
             return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+logger = logging.getLogger(__name__)
 @api_view(['POST'])
 def createBook(request):
     """
@@ -196,15 +198,6 @@ def createBook(request):
                         "book_data": book_data
                     })
                     continue
-                
-                # Extract author name from the request data
-                author_name = book_data.pop('author')
-                
-                # Check if the Author object exists or create a new one
-                author, _ = Author.objects.get_or_create(name=author_name)
-                
-                # Add the author object back to the book_data dictionary
-                book_data['author'] = author.id
                 
                 serializer = BookSerializer(data=book_data)
                 if serializer.is_valid():
@@ -238,15 +231,6 @@ def createBook(request):
             if 'author' not in request.data:
                 return Response({"detail": "Book must have an author."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Extract author name from the request data
-            author_name = request.data.pop('author')
-            
-            # Check if the Author object exists or create a new one
-            author, _ = Author.objects.get_or_create(name=author_name)
-            
-            # Add the author object back to the request data dictionary
-            request.data['author'] = author.id
-            
             serializer = BookSerializer(data=request.data)
             if serializer.is_valid():
                 title = request.data.get('title')
