@@ -12,6 +12,7 @@ from ..models import Book, Genre, Chapter, UserProfile, Author
 from .serializers import BookSerializer, ChapterSerializer, UserProfileSerializer
 from django.db.models import Q, Count
 from django.http import Http404
+from django.shortcuts import get_object_or_404
 import matplotlib.pyplot as plt
 import logging
 
@@ -187,7 +188,8 @@ def createBook(request):
     Create a book.
     """
     try:
-        print("Request Data:", request.data)  # Add this line to print request data
+        logger.info("Request Data:", request.data)  # Add logging statement to log request data
+
         if isinstance(request.data, list):
             success_data = []
             error_data = []
@@ -198,7 +200,7 @@ def createBook(request):
                         "book_data": book_data
                     })
                     continue
-                
+
                 serializer = BookSerializer(data=book_data)
                 if serializer.is_valid():
                     title = book_data.get('title')
@@ -209,10 +211,7 @@ def createBook(request):
                             "book_data": book_data
                         })
                     else:
-                        genres_data = book_data.get('genres', [])
-                        genres = [Genre.objects.get_or_create(name=genre_name)[0] for genre_name in genres_data]
-                        book = serializer.save()
-                        book.genres.add(*genres)
+                        book = serializer.save(author=get_object_or_404(Author, id=book_data['author']))
                         success_data.append({
                             "success": "Book created successfully",
                             "book_data": serializer.data
@@ -240,10 +239,7 @@ def createBook(request):
                         "error": f"Book with title '{title}' already exists."
                     }, status=status.HTTP_400_BAD_REQUEST)
                 else:
-                    genres_data = request.data.get('genres', [])
-                    genres = [Genre.objects.get_or_create(name=genre_name)[0] for genre_name in genres_data]
-                    book = serializer.save()
-                    book.genres.add(*genres)
+                    book = serializer.save(author=get_object_or_404(Author, id=request.data['author']))
                     return Response({
                         "success": "Book created successfully",
                         "book_data": serializer.data
@@ -251,6 +247,7 @@ def createBook(request):
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
+        logger.error("Error:", e, exc_info=True)  # Log the exception along with its traceback
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
