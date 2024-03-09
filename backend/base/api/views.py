@@ -188,66 +188,34 @@ def createBook(request):
     Create a book.
     """
     try:
-        logger.info("Request Data:", request.data)  # Add logging statement to log request data
+        author_name = request.data.get('author')  # Extract author's name from request data
 
-        if isinstance(request.data, list):
-            success_data = []
-            error_data = []
-            for book_data in request.data:
-                if 'author' not in book_data:
-                    error_data.append({
-                        "error": "Book must have an author.",
-                        "book_data": book_data
-                    })
-                    continue
+        if not author_name:
+            return Response({"detail": "Author name is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-                serializer = BookSerializer(data=book_data)
-                if serializer.is_valid():
-                    title = book_data.get('title')
-                    existing_books = Book.objects.filter(title__iexact=title)
-                    if existing_books.exists():
-                        error_data.append({
-                            "error": f"Book with title '{title}' already exists.",
-                            "book_data": book_data
-                        })
-                    else:
-                        book = serializer.save(author=get_object_or_404(Author, id=book_data['author']))
-                        success_data.append({
-                            "success": "Book created successfully",
-                            "book_data": serializer.data
-                        })
-                else:
-                    error_data.append({
-                        "error": serializer.errors,
-                        "book_data": book_data
-                    })
-            response_data = {
-                "success": success_data,
-                "error": error_data
-            }
-            return Response(response_data, status=status.HTTP_201_CREATED)
-        else:
-            if 'author' not in request.data:
-                return Response({"detail": "Book must have an author."}, status=status.HTTP_400_BAD_REQUEST)
+        # Find the author by name
+        author = get_object_or_404(Author, name=author_name)
 
-            serializer = BookSerializer(data=request.data)
-            if serializer.is_valid():
-                title = request.data.get('title')
-                existing_books = Book.objects.filter(title__iexact=title)
-                if existing_books.exists():
-                    return Response({
-                        "error": f"Book with title '{title}' already exists."
-                    }, status=status.HTTP_400_BAD_REQUEST)
-                else:
-                    book = serializer.save(author=get_object_or_404(Author, id=request.data['author']))
-                    return Response({
-                        "success": "Book created successfully",
-                        "book_data": serializer.data
-                    }, status=status.HTTP_201_CREATED)
+        # Replace author's name with author's ID in request data
+        request.data['author'] = author.id
+
+        serializer = BookSerializer(data=request.data)
+        if serializer.is_valid():
+            title = request.data.get('title')
+            existing_books = Book.objects.filter(title__iexact=title)
+            if existing_books.exists():
+                return Response({
+                    "error": f"Book with title '{title}' already exists."
+                }, status=status.HTTP_400_BAD_REQUEST)
             else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                book = serializer.save()
+                return Response({
+                    "success": "Book created successfully",
+                    "book_data": serializer.data
+                }, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        logger.error("Error:", e, exc_info=True)  # Log the exception along with its traceback
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
