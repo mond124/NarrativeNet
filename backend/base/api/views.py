@@ -263,8 +263,8 @@ def createBook(request):
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        logger.error("Error: %s", e, exc_info=True)  # Fix the formatting of the error message
-        return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Error creating book: {e}")
+        return Response({"detail": "An error occurred while creating the book."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 @api_view(['GET'])
 def getGenreDistribution(request):
