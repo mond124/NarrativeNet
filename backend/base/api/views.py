@@ -184,87 +184,87 @@ class BulkCreateBooksAndChaptersAPIView(APIView):
 logger = logging.getLogger(__name__)
 @api_view(['POST'])
 def createBook(request):
-    """
-    Create a book.
-    """
-    try:
-        logger.info("Request Data:", request.data)
+  """
+  Create a book.
+  """
+  try:
+    logger.info("Request Data:", request.data)
 
-        if isinstance(request.data, list):
-            success_data = []
-            error_data = []
-            for book_data in request.data:
-                author_name = book_data.get('author')  # Extract author's name from request data
-                if not author_name:
-                    error_data.append({
-                        "error": "Book must have an author.",
-                        "book_data": book_data
-                    })
-                    continue
+    if isinstance(request.data, list):
+      success_data = []
+      error_data = []
+      for book_data in request.data:
+        author_name = book_data.get('author')  # Extract author's name from request data
+        if not author_name:
+          error_data.append({
+            "error": "Book must have an author.",
+            "book_data": book_data
+          })
+          continue
 
-                # Find the author by name or create if not exists
-                author, _ = Author.objects.get_or_create(name=author_name)
+        # Find the author by name or create if not exists
+        author, _ = Author.objects.get_or_create(name=author_name)
 
-                # Replace author's name with author's ID in request data
-                book_data['author'] = author.id
+        # Replace author's name with author's ID in request data
+        book_data['author'] = author.id
 
-                serializer = BookSerializer(data=book_data)
-                if serializer.is_valid():
-                    title = book_data.get('title')
-                    existing_books = Book.objects.filter(title__iexact=title)
-                    if existing_books.exists():
-                        error_data.append({
-                            "error": f"Book with title '{title}' already exists.",
-                            "book_data": book_data
-                        })
-                    else:
-                        book = serializer.save()
-                        success_data.append({
-                            "success": "Book created successfully",
-                            "book_data": serializer.data
-                        })
-                else:
-                    error_data.append({
-                        "error": serializer.errors,
-                        "book_data": book_data
-                    })
-
-            response_data = {
-                "success": success_data,
-                "error": error_data
-            }
-            return Response(response_data, status=status.HTTP_201_CREATED)
+        serializer = BookSerializer(data=book_data)
+        if serializer.is_valid():
+          title = book_data.get('title')
+          existing_books = Book.objects.filter(title__iexact=title)
+          if existing_books.exists():
+            error_data.append({
+              "error": f"Book with title '{title}' already exists.",
+              "book_data": book_data
+            })
+          else:
+            book = serializer.save()
+            success_data.append({
+              "success": "Book created successfully",
+              "book_data": serializer.data
+            })
         else:
-            author_name = request.data.get('author')  # Extract author's name from request data
+          error_data.append({
+            "error": serializer.errors,
+            "book_data": book_data
+          })
 
-            if not author_name:
-                return Response({"detail": "Book must have an author."}, status=status.HTTP_400_BAD_REQUEST)
+      response_data = {
+        "success": success_data,
+        "error": error_data
+      }
+      return Response(response_data, status=status.HTTP_201_CREATED)
+    else:
+      author_name = request.data.get('author')  # Extract author's name from request data
 
-            # Find the author by name or create if not exists
-            author, _ = Author.objects.get_or_create(name=author_name)
+      if not author_name:
+        return Response({"detail": "Book must have an author."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Replace author's name with author's ID in request data
-            request.data['author'] = author.id
+      # Find the author by name or create if not exists
+      author, _ = Author.objects.get_or_create(name=author_name)
 
-            serializer = BookSerializer(data=request.data)
-            if serializer.is_valid():
-                title = request.data.get('title')
-                existing_books = Book.objects.filter(title__iexact=title)
-                if existing_books.exists():
-                    return Response({
-                        "error": f"Book with title '{title}' already exists."
-                    }, status=status.HTTP_400_BAD_REQUEST)
-                else:
-                    book = serializer.save()
-                    return Response({
-                        "success": "Book created successfully",
-                        "book_data": serializer.data
-                    }, status=status.HTTP_201_CREATED)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    except Exception as e:
-        logger.error(f"Error creating book: {e}")
-        return Response({"detail": "An error occurred while creating the book."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+      # Replace author's name with author's ID in request data
+      request.data['author'] = author.id
+
+      serializer = BookSerializer(data=request.data)
+      if serializer.is_valid():
+        title = request.data.get('title')
+        existing_books = Book.objects.filter(title__iexact=title)
+        if existing_books.exists():
+          return Response({
+            "error": f"Book with title '{title}' already exists."
+          }, status=status.HTTP_400_BAD_REQUEST)
+        else:
+          book = serializer.save()
+          return Response({
+            "success": "Book created successfully",
+            "book_data": serializer.data
+          }, status=status.HTTP_201_CREATED)
+      else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+  except Exception as e:
+    logger.error(f"Error creating book: {e}")
+    return Response({"detail": "An error occurred while creating the book."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 @api_view(['GET'])
 def getGenreDistribution(request):
