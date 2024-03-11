@@ -185,71 +185,71 @@ logger = logging.getLogger(__name__)
 @api_view(['POST'])
 def createBook(request):
     """
-    Create a book.
-    """
-    try:
-        logger.info("Request Data:", request.data)  # Add logging statement to log request data
+    Create a book or multiple books.
 
-        if isinstance(request.data, list):
+    Handles both single book creation and bulk creation
+    (sending a list of book data in the request body).
+
+    Returns detailed success and error information for each book
+    in the response data.
+    """
+
+    logger.info("Request Data:", request.data)
+
+    try:
+        if isinstance(request.data, list):  # Handle bulk creation
             success_data = []
             error_data = []
             for book_data in request.data:
-                if 'author' not in book_data:
-                    error_data.append({
-                        "error": "Book must have an author.",
-                        "book_data": book_data
-                    })
-                    continue
-
                 serializer = BookSerializer(data=book_data)
                 if serializer.is_valid():
-                    title = book_data.get('title')
-                    existing_books = Book.objects.filter(title__iexact=title)
-                    if existing_books.exists():
-                        error_data.append({
-                            "error": f"Book with title '{title}' already exists.",
-                            "book_data": book_data
-                        })
-                    else:
-                        book = serializer.save(author=get_object_or_404(Author, id=book_data['author']))
+                    try:
+                        book = serializer.save()
                         success_data.append({
                             "success": "Book created successfully",
                             "book_data": serializer.data
                         })
+                    except ValidationError as e:
+                        # Log specific validation errors with book data
+                        logger.error(f"Validation error creating book ({book_data}): {e}")
+                        error_data.append({
+                            "error": str(e),  # Get detailed error message
+                            "book_data": book_data
+                        })
                 else:
                     error_data.append({
-                        "error": serializer.errors,
+                        "error": serializer.errors,  # Use serializer errors for detailed messages
                         "book_data": book_data
                     })
+
             response_data = {
                 "success": success_data,
                 "error": error_data
             }
             return Response(response_data, status=status.HTTP_201_CREATED)
-        else:
-            if 'author' not in request.data:
-                return Response({"detail": "Book must have an author."}, status=status.HTTP_400_BAD_REQUEST)
 
+        else:  # Handle single book creation
             serializer = BookSerializer(data=request.data)
             if serializer.is_valid():
-                title = request.data.get('title')
-                existing_books = Book.objects.filter(title__iexact=title)
-                if existing_books.exists():
-                    return Response({
-                        "error": f"Book with title '{title}' already exists."
-                    }, status=status.HTTP_400_BAD_REQUEST)
-                else:
-                    book = serializer.save(author=get_object_or_404(Author, id=request.data['author']))
+                try:
+                    book = serializer.save()
                     return Response({
                         "success": "Book created successfully",
                         "book_data": serializer.data
                     }, status=status.HTTP_201_CREATED)
+                except ValidationError as e:
+                    # Log specific validation errors
+                    logger.error(f"Validation error creating book: {e}")
+                    return Response({
+                        "error": str(e),  # Get detailed error message
+                    }, status=status.HTTP_400_BAD_REQUEST)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    except Exception as e:
-        logger.error("Error:", e, exc_info=True)  # Log the exception along with its traceback
-        return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    except Exception as e:
+        logger.error(f"Error creating book: {e}")
+        return Response({"detail": "An unexpected error occurred while creating book(s)."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 @api_view(['GET'])
 def getGenreDistribution(request):
     """
