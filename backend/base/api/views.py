@@ -194,6 +194,8 @@ def createBook(request):
     in the response data.
     """
 
+    print("Request Data:", request.data)  # Add print statement for request data
+
     logger.info("Request Data:", request.data)
 
     try:
@@ -211,6 +213,7 @@ def createBook(request):
                         })
                     except ValidationError as e:
                         # Log specific validation errors with book data
+                        print(f"Validation error creating book ({book_data}): {e}")  # Print validation error
                         logger.error(f"Validation error creating book ({book_data}): {e}")
                         error_data.append({
                             "error": str(e),  # Get detailed error message
@@ -239,14 +242,17 @@ def createBook(request):
                     }, status=status.HTTP_201_CREATED)
                 except ValidationError as e:
                     # Log specific validation errors
+                    print(f"Validation error creating book: {e}")  # Print validation error
                     logger.error(f"Validation error creating book: {e}")
                     return Response({
                         "error": str(e),  # Get detailed error message
                     }, status=status.HTTP_400_BAD_REQUEST)
             else:
+                print("Serializer Errors:", serializer.errors)  # Print serializer errors
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
+        print(f"Error creating book: {e}")  # Print general error
         logger.error(f"Error creating book: {e}")
         return Response({"detail": "An unexpected error occurred while creating book(s)."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
