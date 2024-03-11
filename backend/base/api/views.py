@@ -206,11 +206,12 @@ def createBook(request):
                 serializer = BookSerializer(data=book_data)
                 if serializer.is_valid():
                     try:
-                        book = serializer.save()
+                        serializer.save()
                         success_data.append({
                             "success": "Book created successfully",
                             "book_data": serializer.data
                         })
+                        print('book data valid\n')
                     except ValidationError as e:
                         # Log specific validation errors with book data
                         print(f"Validation error creating book ({book_data}): {e}")  # Print validation error
@@ -252,7 +253,7 @@ def createBook(request):
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
-        print(f"Error creating book: {e}")  # Print general error
+        # print(f"Error creating book: {e}")  # Print general error
         logger.error(f"Error creating book: {e}")
         return Response({"detail": "An unexpected error occurred while creating book(s)."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
