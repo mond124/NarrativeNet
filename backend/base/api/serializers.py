@@ -11,15 +11,20 @@ class ChapterSerializer(serializers.ModelSerializer):
         model = Chapter
         fields = ['title', 'file']
 
+class AuthorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Author
+        fields = ['name']
+
 class BookSerializer(serializers.ModelSerializer):
     genres = GenreSerializer(many=True, read_only=True)
     cover_image_url = serializers.SerializerMethodField()
-    author_name = serializers.SerializerMethodField()
+    author = AuthorSerializer(many=True, read_only=True)
     user_profile = serializers.SerializerMethodField()
 
     class Meta:
         model = Book
-        fields = ['book_id', 'title', 'synopsis', 'views', 'rating', 'author', 'genres', 'cover_image_url', 'user_profile']
+        fields = '__all__'
 
     def get_author_name(self, obj):
         return obj.author.name if obj.author else None
@@ -35,11 +40,6 @@ class BookSerializer(serializers.ModelSerializer):
     
     def get_user_profile(self, obj):
         return UserProfileSerializer(obj.author.userprofile).data if obj.author.userprofile else None
-
-class AuthorSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Author
-        fields = ['name']
 
 class UserProfileSerializer(serializers.ModelSerializer):
     favorite_genres = GenreSerializer(many=True)
