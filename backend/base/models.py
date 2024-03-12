@@ -42,7 +42,6 @@ class Genre(models.Model):
         super().save(*args, **kwargs)
 
 class Book(models.Model):
-    book_id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=255, unique=True)
     author = models.ManyToManyField(Author)  # Updated field for author
     synopsis = models.TextField()
