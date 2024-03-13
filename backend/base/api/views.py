@@ -194,7 +194,7 @@ def createBook(request):
     in the response data.
     """
 
-    print("Request Data:", request.data)  # Add print statement for request data
+    print("Request Data:", request.data)  # Print request data for debugging
     logger.info("Request Data:", request.data)
 
     try:
@@ -205,10 +205,14 @@ def createBook(request):
                 serializer = BookSerializer(data=book_data)
                 if serializer.is_valid():
                     try:
-                        serializer.save()  # Save the book object first
-                        created_book = serializer.instance  # Access the newly created book
+                        # Save the book object first
+                        serializer.save()
+                        created_book = serializer.instance
+                        # Print validated data for debugging
+                        print('validated data:', serializer.validated_data) 
+
                         # Associate genres (assuming 'genres' is a field):
-                        created_book.genres.add(*book_data['genres'])  # Add genres using unpacking (*)
+                        created_book.genres.add(*book_data['genres'])
                         success_data.append({
                             "success": "Book created successfully",
                             "book_data": serializer.data
@@ -238,10 +242,13 @@ def createBook(request):
             serializer = BookSerializer(data=request.data)
             if serializer.is_valid():
                 try:
-                    book = serializer.save()  # Save the book object first
-                    print('data valid')
+                    # Save the book object first
+                    book = serializer.save()
+                    # Print validated data for debugging
+                    print('validated data:', serializer.validated_data) 
+
                     # Associate genres (assuming 'genres' is a field):
-                    book.genres.add(*request.data['genres'])  # Add genres using unpacking (*)
+                    book.genres.add(*request.data['genres'])
                     return Response({
                         "success": "Book created successfully",
                         "book_data": serializer.data
