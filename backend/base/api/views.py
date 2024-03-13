@@ -205,7 +205,10 @@ def createBook(request):
                 serializer = BookSerializer(data=book_data)
                 if serializer.is_valid():
                     try:
-                        serializer.save()
+                        serializer.save()  # Save the book object first
+                        created_book = serializer.instance  # Access the newly created book
+                        # Associate genres (assuming 'genres' is a field):
+                        created_book.genres.add(*book_data['genres'])  # Add genres using unpacking (*)
                         success_data.append({
                             "success": "Book created successfully",
                             "book_data": serializer.data
@@ -213,7 +216,7 @@ def createBook(request):
                         print('book data valid\n')
                     except ValidationError as e:
                         # Log specific validation errors with book data
-                        print(f"Validation error creating book ({book_data}): {e}")  # Print validation error
+                        print(f"Validation error creating book ({book_data}): {e}")
                         logger.error(f"Validation error creating book ({book_data}): {e}")
                         error_data.append({
                             "error": str(e),  # Get detailed error message
@@ -235,14 +238,17 @@ def createBook(request):
             serializer = BookSerializer(data=request.data)
             if serializer.is_valid():
                 try:
-                    book = serializer.save()
+                    book = serializer.save()  # Save the book object first
+                    print('data valid')
+                    # Associate genres (assuming 'genres' is a field):
+                    book.genres.add(*request.data['genres'])  # Add genres using unpacking (*)
                     return Response({
                         "success": "Book created successfully",
                         "book_data": serializer.data
                     }, status=status.HTTP_201_CREATED)
                 except ValidationError as e:
                     # Log specific validation errors
-                    print(f"Validation error creating book: {e}")  # Print validation error
+                    print(f"Validation error creating book: {e}")
                     logger.error(f"Validation error creating book: {e}")
                     return Response({
                         "error": str(e),  # Get detailed error message
@@ -252,8 +258,8 @@ def createBook(request):
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
-        # print(f"Error creating book: {e}")  # Print general error
-        logger.error(f"Error creating book: {e}")
+        # Log the error
+        logger.error(f"Error creating book(s): {e}")
         return Response({"detail": "An unexpected error occurred while creating book(s)."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 @api_view(['GET'])
