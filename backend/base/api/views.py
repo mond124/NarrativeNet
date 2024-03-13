@@ -195,7 +195,6 @@ def createBook(request):
     """
 
     print("Request Data:", request.data)  # Add print statement for request data
-
     logger.info("Request Data:", request.data)
 
     try:
