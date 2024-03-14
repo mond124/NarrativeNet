@@ -17,9 +17,10 @@ class AuthorSerializer(serializers.ModelSerializer):
         fields = ['name']
 
 class BookSerializer(serializers.ModelSerializer):
+    # Include author by name (modify to author_id if needed)
+    author = AuthorSerializer(read_only=True)  # Use AuthorSerializer for nested representation
     genres = GenreSerializer(many=True, read_only=True)
     cover_image_url = serializers.SerializerMethodField()
-    author = AuthorSerializer(many=True, read_only=True)
     user_profile = serializers.SerializerMethodField()
 
     class Meta:
