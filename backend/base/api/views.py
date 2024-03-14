@@ -206,7 +206,8 @@ def createBook(request):
                 if serializer.is_valid():
                     try:
                         # Save the book object first
-                        serializer.save()
+                        book = serializer.save()
+                        # Access the newly created book object
                         created_book = serializer.instance
                         # Print validated data for debugging
                         print('validated data:', serializer.validated_data) 
@@ -244,11 +245,13 @@ def createBook(request):
                 try:
                     # Save the book object first
                     book = serializer.save()
+                    # Access the newly created book object
+                    created_book = serializer.instance
                     # Print validated data for debugging
                     print('validated data:', serializer.validated_data) 
 
                     # Associate genres (assuming 'genres' is a field):
-                    book.genres.add(*request.data['genres'])
+                    created_book.genres.add(*request.data['genres'])
                     return Response({
                         "success": "Book created successfully",
                         "book_data": serializer.data
@@ -263,6 +266,11 @@ def createBook(request):
             else:
                 print("Serializer Errors:", serializer.errors)  # Print serializer errors
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    except Exception as e:
+        # Log the error
+        logger.error(f"Error creating book(s): {e}")
+        return Response({"detail": "An unexpected error occurred while creating book(s)."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     except Exception as e:
         # Log the error
