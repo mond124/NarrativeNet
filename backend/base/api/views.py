@@ -202,10 +202,22 @@ def createBook(request):
             success_data = []
             error_data = []
             for book_data in request.data:
+                try:
+                    # Find the author object based on the name
+                    author_name = book_data['author']
+                    author = Author.objects.get(name=author_name)
+                except Author.DoesNotExist:
+                    # Handle author not found error
+                    error_data.append({
+                        "error": f"Author with name '{author_name}' not found",
+                        "book_data": book_data
+                    })
+                    continue
+
                 serializer = BookSerializer(data=book_data)
+                serializer.validated_data['author'] = author  # Set the author object
                 if serializer.is_valid():
                     try:
-                        # Save the book object first
                         book = serializer.save()
                         # Access the newly created book object
                         created_book = serializer.instance
@@ -220,7 +232,7 @@ def createBook(request):
                         })
                         print('book data valid\n')
                     except ValidationError as e:
-                        # Log specific validation errors with book data
+                        # Log specific validation errors
                         print(f"Validation error creating book ({book_data}): {e}")
                         logger.error(f"Validation error creating book ({book_data}): {e}")
                         error_data.append({
@@ -240,10 +252,18 @@ def createBook(request):
             return Response(response_data, status=status.HTTP_201_CREATED)
 
         else:  # Handle single book creation
+            try:
+                # Find the author object based on the name
+                author_name = request.data['author']
+                author = Author.objects.get(name=author_name)
+            except Author.DoesNotExist:
+                # Handle author not found error
+                return Response({"error": f"Author with name '{author_name}' not found"}, status=status.HTTP_400_BAD_REQUEST)
+
             serializer = BookSerializer(data=request.data)
+            serializer.validated_data['author'] = author  # Set the author object
             if serializer.is_valid():
                 try:
-                    # Save the book object first
                     book = serializer.save()
                     # Access the newly created book object
                     created_book = serializer.instance
@@ -264,17 +284,10 @@ def createBook(request):
                         "error": str(e),  # Get detailed error message
                     }, status=status.HTTP_400_BAD_REQUEST)
             else:
-                print("Serializer Errors:", serializer.errors)  # Print serializer errors
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
     except Exception as e:
-        # Log the error
-        logger.error(f"Error creating book(s): {e}")
-        return Response({"detail": "An unexpected error occurred while creating book(s)."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    except Exception as e:
-        # Log the error
-        logger.error(f"Error creating book(s): {e}")
+        print(f"Error creating book: {e}")  # Print error for debugging
+        logger.error(f"Error creating book: {e}")
         return Response({"detail": "An unexpected error occurred while creating book(s)."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 @api_view(['GET'])
