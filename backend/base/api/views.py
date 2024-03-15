@@ -206,9 +206,10 @@ def createBook(request):
                 author, created = Author.objects.get_or_create(name=book_data['author'])
 
                 serializer = BookSerializer(data=book_data)
-                serializer.validated_data['author'] = author  # Set the author object
-                if serializer.is_valid():
+
+                if serializer.is_valid():  # Check for validation errors
                     try:
+                        # Access validated data after successful validation
                         book = serializer.save()
 
                         # Associate genres (assuming 'genres' is a field):
@@ -227,6 +228,7 @@ def createBook(request):
                             "book_data": book_data
                         })
                 else:
+                    print("Serializer Errors:", serializer.errors)  # Print serializer errors
                     error_data.append({
                         "error": serializer.errors,  # Use serializer errors for detailed messages
                         "book_data": book_data
@@ -253,9 +255,10 @@ def createBook(request):
             author, created = Author.objects.get_or_create(name=request.data['author'])
 
             serializer = BookSerializer(data=request.data)
-            serializer.validated_data['author'] = author  # Set the author object
-            if serializer.is_valid():
+
+            if serializer.is_valid():  # Check for validation errors
                 try:
+                    # Access validated data after successful validation
                     book = serializer.save()
 
                     # Associate genres (assuming 'genres' is a field):
