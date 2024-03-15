@@ -257,6 +257,7 @@ def createBook(request):
                 author_name = request.data['author']
                 author = Author.objects.get(name=author_name)
             except Author.DoesNotExist:
+                
                 # Handle author not found error
                 return Response({"error": f"Author with name '{author_name}' not found"}, status=status.HTTP_400_BAD_REQUEST)
 
