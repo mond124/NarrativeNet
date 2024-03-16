@@ -206,8 +206,8 @@ def createBook(request):
                 author, created = Author.objects.get_or_create(name=book_data['author'])
 
                 serializer = BookSerializer(data=book_data)
-                serializer.validated_data['author'] = author  # Set the author object
                 if serializer.is_valid():
+                    serializer.validated_data['author'] = author  # Set the author object
                     try:
                         book = serializer.save()
 
@@ -256,8 +256,8 @@ def createBook(request):
             author, created = Author.objects.get_or_create(name=request.data['author'])
 
             serializer = BookSerializer(data=request.data)
-            serializer.validated_data['author'] = author  # Set the author object
             if serializer.is_valid():
+                serializer.validated_data['author'] = author  # Set the author object
                 try:
                     book = serializer.save()
 
