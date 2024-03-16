@@ -281,7 +281,6 @@ def createBook(request):
             else:
                 print("Serializer Errors:", serializer.errors)  # Print serializer errors
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
         except Exception as e:
             # Handle other errors during book creation
             print(f"Error creating book: {e}")
