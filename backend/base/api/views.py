@@ -197,53 +197,52 @@ def createBook(request):
 
     print("Request Data:", request.data)  # Print request data for debugging
     logger.info("Request Data:", request.data)
-
     if isinstance(request.data, list):  # Handle bulk creation
         success_data = []
         error_data = []
-        with transaction.atomic():  # Wrap bulk creation in a transaction
-            for book_data in request.data:
-                try:
-                    # Create the author if it doesn't exist
-                    author, created = Author.objects.get_or_create(name=book_data['author'])
+        for book_data in request.data:
+            try:
+                # Create the author if it doesn't exist
+                author, created = Author.objects.get_or_create(name=book_data['author'])
 
-                    serializer = BookSerializer(data=book_data)
+                serializer = BookSerializer(data=book_data)
+                serializer.validated_data['author'] = author  # Set the author object
+                if serializer.is_valid():
+                    try:
+                        book = serializer.save()
 
-                    if serializer.is_valid():
-                        try:
-                            # Access validated data after successful validation
-                            book = serializer.save()
+                        # Save the book before adding genres
+                        serializer.save_m2m()
 
-                            # Associate genres (assuming 'genres' is a field):
-                            book.genres.add(*book_data.get('genres', []))
+                        # Associate genres
+                        book.genres.add(*book_data.get('genres', []))
 
-                            success_data.append({
-                                "success": "Book created successfully",
-                                "book_data": serializer.data
-                            })
-                        except ValidationError as e:
-                            # Log specific validation errors
-                            print(f"Validation error creating book ({book_data}): {e}")
-                            logger.error(f"Validation error creating book ({book_data}): {e}")
-                            error_data.append({
-                                "error": str(e),  # Get detailed error message
-                                "book_data": book_data
-                            })
-                    else:
-                        print("Serializer Errors:", serializer.errors)  # Print serializer errors
+                        success_data.append({
+                            "success": "Book created successfully",
+                            "book_data": serializer.data
+                        })
+                    except ValidationError as e:
+                        # Log specific validation errors
+                        print(f"Validation error creating book ({book_data}): {e}")
+                        logger.error(f"Validation error creating book ({book_data}): {e}")
                         error_data.append({
-                            "error": serializer.errors,  # Use serializer errors for detailed messages
+                            "error": str(e),  # Get detailed error message
                             "book_data": book_data
                         })
-
-                except Exception as e:
-                    # Handle other errors during book creation
-                    print(f"Error creating book: {e}")
-                    logger.error(f"Error creating book: {e}")
+                else:
                     error_data.append({
-                        "error": f"An unexpected error occurred creating book: {e}",
+                        "error": serializer.errors,  # Use serializer errors for detailed messages
                         "book_data": book_data
                     })
+
+            except Exception as e:
+                # Handle other errors during book creation
+                print(f"Error creating book: {e}")
+                logger.error(f"Error creating book: {e}")
+                error_data.append({
+                    "error": f"An unexpected error occurred creating book: {e}",
+                    "book_data": book_data
+                })
 
         response_data = {
             "success": success_data,
@@ -257,20 +256,21 @@ def createBook(request):
             author, created = Author.objects.get_or_create(name=request.data['author'])
 
             serializer = BookSerializer(data=request.data)
-
+            serializer.validated_data['author'] = author  # Set the author object
             if serializer.is_valid():
                 try:
-                    with transaction.atomic():  # Wrap single book creation in a transaction
-                        # Access validated data after successful validation
-                        book = serializer.save()
+                    book = serializer.save()
 
-                        # Associate genres (assuming 'genres' is a field):
-                        book.genres.add(*request.data.get('genres', []))
+                    # Save the book before adding genres
+                    serializer.save_m2m()
 
-                        return Response({
-                            "success": "Book created successfully",
-                            "book_data": serializer.data
-                        }, status=status.HTTP_201_CREATED)
+                    # Associate genres
+                    book.genres.add(*request.data.get('genres', []))
+
+                    return Response({
+                        "success": "Book created successfully",
+                        "book_data": serializer.data
+                    }, status=status.HTTP_201_CREATED)
                 except ValidationError as e:
                     # Log specific validation errors
                     print(f"Validation error creating book: {e}")
