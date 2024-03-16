@@ -11,6 +11,7 @@ from plotly import graph_objs as go
 from ..models import Book, Genre, Chapter, UserProfile, Author
 from .serializers import BookSerializer, ChapterSerializer, UserProfileSerializer
 from django.db.models import Q, Count
+from django.db import transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 import matplotlib.pyplot as plt
@@ -200,48 +201,49 @@ def createBook(request):
     if isinstance(request.data, list):  # Handle bulk creation
         success_data = []
         error_data = []
-        for book_data in request.data:
-            try:
-                # Create the author if it doesn't exist
-                author, created = Author.objects.get_or_create(name=book_data['author'])
+        with transaction.atomic():  # Wrap bulk creation in a transaction
+            for book_data in request.data:
+                try:
+                    # Create the author if it doesn't exist
+                    author, created = Author.objects.get_or_create(name=book_data['author'])
 
-                serializer = BookSerializer(data=book_data)
+                    serializer = BookSerializer(data=book_data)
 
-                if serializer.is_valid():  # Check for validation errors
-                    try:
-                        # Access validated data after successful validation
-                        book = serializer.save()
+                    if serializer.is_valid():
+                        try:
+                            # Access validated data after successful validation
+                            book = serializer.save()
 
-                        # Associate genres (assuming 'genres' is a field):
-                        book.genres.add(*book_data.get('genres', []))
+                            # Associate genres (assuming 'genres' is a field):
+                            book.genres.add(*book_data.get('genres', []))
 
-                        success_data.append({
-                            "success": "Book created successfully",
-                            "book_data": serializer.data
-                        })
-                    except ValidationError as e:
-                        # Log specific validation errors
-                        print(f"Validation error creating book ({book_data}): {e}")
-                        logger.error(f"Validation error creating book ({book_data}): {e}")
+                            success_data.append({
+                                "success": "Book created successfully",
+                                "book_data": serializer.data
+                            })
+                        except ValidationError as e:
+                            # Log specific validation errors
+                            print(f"Validation error creating book ({book_data}): {e}")
+                            logger.error(f"Validation error creating book ({book_data}): {e}")
+                            error_data.append({
+                                "error": str(e),  # Get detailed error message
+                                "book_data": book_data
+                            })
+                    else:
+                        print("Serializer Errors:", serializer.errors)  # Print serializer errors
                         error_data.append({
-                            "error": str(e),  # Get detailed error message
+                            "error": serializer.errors,  # Use serializer errors for detailed messages
                             "book_data": book_data
                         })
-                else:
-                    print("Serializer Errors:", serializer.errors)  # Print serializer errors
+
+                except Exception as e:
+                    # Handle other errors during book creation
+                    print(f"Error creating book: {e}")
+                    logger.error(f"Error creating book: {e}")
                     error_data.append({
-                        "error": serializer.errors,  # Use serializer errors for detailed messages
+                        "error": f"An unexpected error occurred creating book: {e}",
                         "book_data": book_data
                     })
-
-            except Exception as e:
-                # Handle other errors during book creation
-                print(f"Error creating book: {e}")
-                logger.error(f"Error creating book: {e}")
-                error_data.append({
-                    "error": f"An unexpected error occurred creating book: {e}",
-                    "book_data": book_data
-                })
 
         response_data = {
             "success": success_data,
@@ -256,18 +258,19 @@ def createBook(request):
 
             serializer = BookSerializer(data=request.data)
 
-            if serializer.is_valid():  # Check for validation errors
+            if serializer.is_valid():
                 try:
-                    # Access validated data after successful validation
-                    book = serializer.save()
+                    with transaction.atomic():  # Wrap single book creation in a transaction
+                        # Access validated data after successful validation
+                        book = serializer.save()
 
-                    # Associate genres (assuming 'genres' is a field):
-                    book.genres.add(*request.data.get('genres', []))
+                        # Associate genres (assuming 'genres' is a field):
+                        book.genres.add(*request.data.get('genres', []))
 
-                    return Response({
-                        "success": "Book created successfully",
-                        "book_data": serializer.data
-                    }, status=status.HTTP_201_CREATED)
+                        return Response({
+                            "success": "Book created successfully",
+                            "book_data": serializer.data
+                        }, status=status.HTTP_201_CREATED)
                 except ValidationError as e:
                     # Log specific validation errors
                     print(f"Validation error creating book: {e}")
