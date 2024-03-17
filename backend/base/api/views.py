@@ -11,6 +11,7 @@ from plotly import graph_objs as go
 from ..models import Book, Genre, Chapter, UserProfile, Author
 from .serializers import BookSerializer, ChapterSerializer, UserProfileSerializer
 from django.db.models import Q, Count
+from django.db import transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 import matplotlib.pyplot as plt
@@ -196,7 +197,6 @@ def createBook(request):
 
     print("Request Data:", request.data)  # Print request data for debugging
     logger.info("Request Data:", request.data)
-
     if isinstance(request.data, list):  # Handle bulk creation
         success_data = []
         error_data = []
@@ -206,13 +206,15 @@ def createBook(request):
                 author, created = Author.objects.get_or_create(name=book_data['author'])
 
                 serializer = BookSerializer(data=book_data)
-
-                if serializer.is_valid():  # Check for validation errors
+                if serializer.is_valid():
+                    serializer.validated_data['author'] = author  # Set the author object
                     try:
-                        # Access validated data after successful validation
                         book = serializer.save()
 
-                        # Associate genres (assuming 'genres' is a field):
+                        # Save the book before adding genres
+                        serializer.save_m2m()
+
+                        # Associate genres
                         book.genres.add(*book_data.get('genres', []))
 
                         success_data.append({
@@ -228,7 +230,6 @@ def createBook(request):
                             "book_data": book_data
                         })
                 else:
-                    print("Serializer Errors:", serializer.errors)  # Print serializer errors
                     error_data.append({
                         "error": serializer.errors,  # Use serializer errors for detailed messages
                         "book_data": book_data
@@ -255,13 +256,15 @@ def createBook(request):
             author, created = Author.objects.get_or_create(name=request.data['author'])
 
             serializer = BookSerializer(data=request.data)
-
-            if serializer.is_valid():  # Check for validation errors
+            if serializer.is_valid():
+                serializer.validated_data['author'] = author  # Set the author object
                 try:
-                    # Access validated data after successful validation
                     book = serializer.save()
 
-                    # Associate genres (assuming 'genres' is a field):
+                    # Save the book before adding genres
+                    serializer.save_m2m()
+
+                    # Associate genres
                     book.genres.add(*request.data.get('genres', []))
 
                     return Response({
@@ -278,7 +281,6 @@ def createBook(request):
             else:
                 print("Serializer Errors:", serializer.errors)  # Print serializer errors
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
         except Exception as e:
             # Handle other errors during book creation
             print(f"Error creating book: {e}")
