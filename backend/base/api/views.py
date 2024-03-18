@@ -209,13 +209,13 @@ def createBook(request):
                 if serializer.is_valid():
                     serializer.validated_data['author'] = author  # Set the author object
                     try:
+                        # Create genres if they don't exist
+                        genres = [Genre.objects.get_or_create(name=genre_name)[0] for genre_name in book_data.get('genres', [])]
+
                         book = serializer.save()
 
-                        # Save the book before adding genres
-                        serializer.save_m2m()
-
-                        # Associate genres
-                        book.genres.add(*book_data.get('genres', []))
+                        # Associate genres with the book
+                        book.genres.add(*genres)
 
                         success_data.append({
                             "success": "Book created successfully",
@@ -259,13 +259,13 @@ def createBook(request):
             if serializer.is_valid():
                 serializer.validated_data['author'] = author  # Set the author object
                 try:
+                    # Create genres if they don't exist
+                    genres = [Genre.objects.get_or_create(name=genre_name)[0] for genre_name in request.data.get('genres', [])]
+
                     book = serializer.save()
 
-                    # Save the book before adding genres
-                    serializer.save_m2m()
-
-                    # Associate genres
-                    book.genres.add(*request.data.get('genres', []))
+                    # Associate genres with the book
+                    book.genres.add(*genres)
 
                     return Response({
                         "success": "Book created successfully",
