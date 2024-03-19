@@ -1,11 +1,14 @@
 from django.contrib import admin
-from .models import Book, Genre, Chapter, User, UserProfile, Author
+from .models import Book, Genre, Chapter, UserProfile, Author
 # Register your models here.
 
 class GenreAdmin(admin.ModelAdmin):
     list_display = ('name',)
 
-admin.site.register(Book, Genre, GenreAdmin, Chapter, User, UserProfile, Author)
+admin.site.register(Genre, GenreAdmin)
+admin.site.register(Chapter)
+admin.site.register(UserProfile)
+admin.site.register(Author)
 
 class BookAdmin(admin.ModelAdmin):
     list_display = ('title', 'synopsis', 'views', 'rating', 'display_genres')
