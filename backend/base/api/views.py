@@ -188,104 +188,49 @@ def createBook(request):
     """
     Create a book or multiple books.
 
-    Handles both single book creation and bulk creation
-    (sending a list of book data in the request body).
+    Handles both single book creation and bulk creation (sending a list of
+    book data in the request body).
 
     Returns detailed success and error information for each book
     in the response data.
     """
 
-    print("Request Data:", request.data)  # Print request data for debugging
-    logger.info("Request Data:", request.data)
-    if isinstance(request.data, list):  # Handle bulk creation
-        success_data = []
-        error_data = []
-        for book_data in request.data:
-            try:
-                # Create the author if it doesn't exist
-                author, created = Author.objects.get_or_create(name=book_data['author'])
+    response_data = {"success": [], "error": []}
 
-                serializer = BookSerializer(data=book_data)
-                if serializer.is_valid():
-                    serializer.validated_data['author'] = author  # Set the author object
-                    try:
-                        # Create genres if they don't exist
-                        genres = [Genre.objects.get_or_create(name=genre_name)[0] for genre_name in book_data.get('genres', [])]
+    for book_data in request.data:
+        try:
+            author, created = Author.objects.get_or_create(name=book_data['author'])
+            serializer = BookSerializer(data=book_data)
 
-                        book = serializer.save()
-
-                        # Associate genres with the book
-                        book.genres.add(*genres)
-
-                        success_data.append({
-                            "success": "Book created successfully",
-                            "book_data": serializer.data
-                        })
-                    except ValidationError as e:
-                        # Log specific validation errors
-                        print(f"Validation error creating book ({book_data}): {e}")
-                        logger.error(f"Validation error creating book ({book_data}): {e}")
-                        error_data.append({
-                            "error": str(e),  # Get detailed error message
-                            "book_data": book_data
-                        })
-                else:
-                    error_data.append({
-                        "error": serializer.errors,  # Use serializer errors for detailed messages
-                        "book_data": book_data
-                    })
-
-            except Exception as e:
-                # Handle other errors during book creation
-                print(f"Error creating book: {e}")
-                logger.error(f"Error creating book: {e}")
-                error_data.append({
-                    "error": f"An unexpected error occurred creating book: {e}",
+            if serializer.is_valid():
+                serializer.validated_data['author'] = author
+                genres = [
+                    Genre.objects.get_or_create(name=genre_name)[0]
+                    for genre_name in book_data.get('genres', [])
+                ]
+                book = serializer.save()
+                book.genres.add(*genres)
+                response_data["success"].append({
+                    "success": "Book created successfully",
+                    "book_data": serializer.data
+                })
+            else:
+                response_data["error"].append({
+                    "error": str(serializer.errors),
                     "book_data": book_data
                 })
-
-        response_data = {
-            "success": success_data,
-            "error": error_data
-        }
-        return Response(response_data, status=status.HTTP_201_CREATED)
-
-    else:  # Handle single book creation
-        try:
-            # Create the author if it doesn't exist
-            author, created = Author.objects.get_or_create(name=request.data['author'])
-
-            serializer = BookSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.validated_data['author'] = author  # Set the author object
-                try:
-                    # Create genres if they don't exist
-                    genres = [Genre.objects.get_or_create(name=genre_name)[0] for genre_name in request.data.get('genres', [])]
-
-                    book = serializer.save()
-
-                    # Associate genres with the book
-                    book.genres.add(*genres)
-
-                    return Response({
-                        "success": "Book created successfully",
-                        "book_data": serializer.data
-                    }, status=status.HTTP_201_CREATED)
-                except ValidationError as e:
-                    # Log specific validation errors
-                    print(f"Validation error creating book: {e}")
-                    logger.error(f"Validation error creating book: {e}")
-                    return Response({
-                        "error": str(e),  # Get detailed error message
-                    }, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                print("Serializer Errors:", serializer.errors)  # Print serializer errors
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            # Handle other errors during book creation
             print(f"Error creating book: {e}")
             logger.error(f"Error creating book: {e}")
-            return Response({"detail": "An unexpected error occurred while creating book(s)."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            response_data["error"].append({
+                "error": f"An unexpected error occurred creating book: {e}",
+                "book_data": book_data
+            })
+
+    if response_data["success"]:
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    else:
+        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
     
 @api_view(['GET'])
 def getGenreDistribution(request):
