@@ -136,51 +136,64 @@ class BulkCreateBooksAndChaptersAPIView(APIView):
     """
     Bulk create books and chapters.
     """
+
     def post(self, request, format=None):
-        try:
-            data = request.data
-            books_data = data.get('books', [])
-            chapters_data = data.get('chapters', [])
-            is_single_book = isinstance(books_data, dict)
-            is_single_chapter = isinstance(chapters_data, dict)
-            response_data = {}
-            books_to_create = []
-            chapters_to_create = []
-            if is_single_book:
-                books_data = [books_data]
-            if is_single_chapter:
-                chapters_data = [chapters_data]
-            for book_data in books_data:
-                title = book_data.get('title')
-                existing_books = Book.objects.filter(title=title)
-                if existing_books.exists():
-                    response_data.setdefault('books_errors', []).append(f"Book '{title}' already exists.")
-                else:
-                    books_to_create.append(book_data)
-            for chapter_data in chapters_data:
-                title = chapter_data.get('title')
-                existing_chapters = Chapter.objects.filter(title=title)
-                if existing_chapters.exists():
-                    response_data.setdefault('chapters_errors', []).append(f"Chapter '{title}' already exists.")
-                else:
-                    chapters_to_create.append(chapter_data)
-            if books_to_create:
-                books_serializer = BookSerializer(data=books_to_create, many=True)
-                if books_serializer.is_valid():
-                    books_serializer.save()
-                    response_data['books'] = books_serializer.data
-                else:
-                    response_data.setdefault('books_errors', []).extend(books_serializer.errors)
-            if chapters_to_create:
-                chapters_serializer = ChapterSerializer(data=chapters_to_create, many=True)
-                if chapters_serializer.is_valid():
-                    chapters_serializer.save()
-                    response_data['chapters'] = chapters_serializer.data
-                else:
-                    response_data.setdefault('chapters_errors', []).extend(chapters_serializer.errors)
+        books_data = request.data.get('books', [])
+        chapters_data = request.data.get('chapters', [])
+
+        response_data = self._validate_and_create_books(books_data)
+        response_data.update(self._validate_and_create_chapters(chapters_data))
+
+        if response_data:
             return Response(response_data, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response(status=status.HTTP_NO_CONTENT)
+
+    def _validate_and_create_books(self, books_data):
+        """
+        Validates and creates books, returning a dictionary with results.
+        """
+        books_to_create = []
+        errors = []
+        for book_data in books_data:
+            existing_book = Book.objects.filter(title=book_data.get('title')).first()
+            if existing_book:
+                errors.append(f"Book '{existing_book.title}' already exists.")
+            else:
+                books_to_create.append(book_data)
+
+        if books_to_create:
+            serializer = BookSerializer(data=books_to_create, many=True)
+            if serializer.is_valid():
+                serializer.save()
+                return {'books': serializer.data}
+            else:
+                errors.extend(serializer.errors)
+
+        return {'books_errors': errors}
+
+    def _validate_and_create_chapters(self, chapters_data):
+        """
+        Validates and creates chapters, returning a dictionary with results.
+        """
+        chapters_to_create = []
+        errors = []
+        for chapter_data in chapters_data:
+            existing_chapter = Chapter.objects.filter(title=chapter_data.get('title')).first()
+            if existing_chapter:
+                errors.append(f"Chapter '{existing_chapter.title}' already exists.")
+            else:
+                chapters_to_create.append(chapter_data)
+
+        if chapters_to_create:
+            serializer = ChapterSerializer(data=chapters_data, many=True)
+            if serializer.is_valid():
+                serializer.save()
+                return {'chapters': serializer.data}
+            else:
+                errors.extend(serializer.errors)
+
+        return {'chapters_errors': errors}
 
 logger = logging.getLogger(__name__)
 @api_view(['POST'])
