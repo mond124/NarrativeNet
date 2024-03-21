@@ -107,30 +107,37 @@ class BulkCreateChaptersAPIView(APIView):
     """
     Bulk create chapters.
     """
+
     def post(self, request, format=None):
-        try:
-            chapters_data = request.data if isinstance(request.data, list) else [request.data]
-            response_data = {}
-            new_chapters_data = []
-            existing_chapter_titles = Chapter.objects.values_list('title', flat=True)
-            for chapter_data in chapters_data:
-                title = chapter_data.get('title')
-                if title not in existing_chapter_titles:
-                    new_chapters_data.append(chapter_data)
-                else:
-                    response_data.setdefault('chapters_errors', []).append(f"Chapter '{title}' already exists.")
-            if new_chapters_data:
-                chapters_serializer = ChapterSerializer(data=new_chapters_data, many=True)
-                if chapters_serializer.is_valid():
-                    chapters_serializer.save()
-                    response_data['chapters'] = chapters_serializer.data
-                else:
-                    response_data.setdefault('chapters_errors', []).extend(chapters_serializer.errors)
+        chapters_data = request.data
+
+        # Handle single chapter or list of chapters
+        if not isinstance(chapters_data, list):
+            chapters_data = [chapters_data]
+
+        existing_chapter_titles = set(Chapter.objects.values_list('title', flat=True))
+        new_chapters_data = []
+        errors = []
+
+        for chapter_data in chapters_data:
+            title = chapter_data.get('title')
+            if title in existing_chapter_titles:
+                errors.append(f"Chapter '{title}' already exists.")
             else:
-                response_data.setdefault('chapters_errors', []).append("No new chapters to create.")
-            return Response(response_data, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                new_chapters_data.append(chapter_data)
+
+        if new_chapters_data:
+            serializer = ChapterSerializer(data=new_chapters_data, many=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'chapters': serializer.data}, status=status.HTTP_201_CREATED)
+            else:
+                errors.extend(serializer.errors)
+
+        if errors:
+            return Response({'chapters_errors': errors}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"detail": "No new chapters to create"}, status=status.HTTP_204_NO_CONTENT)
 
 class BulkCreateBooksAndChaptersAPIView(APIView):
     """
