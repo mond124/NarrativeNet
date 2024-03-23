@@ -69,11 +69,18 @@ def getBooksByGenre(request, genre_name):
     """
     try:
         genres = [genre.strip() for genre in genre_name.split(',')]
-        # Validate genre_name parameter
-        for genre in genres:
-            if not Genre.objects.filter(name__iexact=genre).exists():
-                raise ValidationError(f"Genre '{genre}' does not exist.")
-        
+
+        # Validate genre_name parameter with potential caching
+        cache_key = f'genre_validation_{genre_name}'
+        valid_genres = cache.get(cache_key)
+        if valid_genres is None:
+            valid_genres = {genre.name for genre in Genre.objects.all()}
+            cache.set(cache_key, valid_genres, timeout=60 * 60 * 24)  # Cache for 1 day
+
+        invalid_genres = [genre for genre in genres if genre not in valid_genres]
+        if invalid_genres:
+            raise ValidationError(f"Genre(s) '{', '.join(invalid_genres)}' do not exist.")
+
         books = Book.objects.select_related('author__userprofile').filter(genres__name__in=genres).distinct()
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
