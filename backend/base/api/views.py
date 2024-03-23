@@ -107,80 +107,100 @@ class BulkCreateChaptersAPIView(APIView):
     """
     Bulk create chapters.
     """
+
     def post(self, request, format=None):
-        try:
-            chapters_data = request.data if isinstance(request.data, list) else [request.data]
-            response_data = {}
-            new_chapters_data = []
-            existing_chapter_titles = Chapter.objects.values_list('title', flat=True)
-            for chapter_data in chapters_data:
-                title = chapter_data.get('title')
-                if title not in existing_chapter_titles:
-                    new_chapters_data.append(chapter_data)
-                else:
-                    response_data.setdefault('chapters_errors', []).append(f"Chapter '{title}' already exists.")
-            if new_chapters_data:
-                chapters_serializer = ChapterSerializer(data=new_chapters_data, many=True)
-                if chapters_serializer.is_valid():
-                    chapters_serializer.save()
-                    response_data['chapters'] = chapters_serializer.data
-                else:
-                    response_data.setdefault('chapters_errors', []).extend(chapters_serializer.errors)
+        chapters_data = request.data
+
+        # Handle single chapter or list of chapters
+        if not isinstance(chapters_data, list):
+            chapters_data = [chapters_data]
+
+        existing_chapter_titles = set(Chapter.objects.values_list('title', flat=True))
+        new_chapters_data = []
+        errors = []
+
+        for chapter_data in chapters_data:
+            title = chapter_data.get('title')
+            if title in existing_chapter_titles:
+                errors.append(f"Chapter '{title}' already exists.")
             else:
-                response_data.setdefault('chapters_errors', []).append("No new chapters to create.")
-            return Response(response_data, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                new_chapters_data.append(chapter_data)
+
+        if new_chapters_data:
+            serializer = ChapterSerializer(data=new_chapters_data, many=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'chapters': serializer.data}, status=status.HTTP_201_CREATED)
+            else:
+                errors.extend(serializer.errors)
+
+        if errors:
+            return Response({'chapters_errors': errors}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"detail": "No new chapters to create"}, status=status.HTTP_204_NO_CONTENT)
 
 class BulkCreateBooksAndChaptersAPIView(APIView):
     """
     Bulk create books and chapters.
     """
+
     def post(self, request, format=None):
-        try:
-            data = request.data
-            books_data = data.get('books', [])
-            chapters_data = data.get('chapters', [])
-            is_single_book = isinstance(books_data, dict)
-            is_single_chapter = isinstance(chapters_data, dict)
-            response_data = {}
-            books_to_create = []
-            chapters_to_create = []
-            if is_single_book:
-                books_data = [books_data]
-            if is_single_chapter:
-                chapters_data = [chapters_data]
-            for book_data in books_data:
-                title = book_data.get('title')
-                existing_books = Book.objects.filter(title=title)
-                if existing_books.exists():
-                    response_data.setdefault('books_errors', []).append(f"Book '{title}' already exists.")
-                else:
-                    books_to_create.append(book_data)
-            for chapter_data in chapters_data:
-                title = chapter_data.get('title')
-                existing_chapters = Chapter.objects.filter(title=title)
-                if existing_chapters.exists():
-                    response_data.setdefault('chapters_errors', []).append(f"Chapter '{title}' already exists.")
-                else:
-                    chapters_to_create.append(chapter_data)
-            if books_to_create:
-                books_serializer = BookSerializer(data=books_to_create, many=True)
-                if books_serializer.is_valid():
-                    books_serializer.save()
-                    response_data['books'] = books_serializer.data
-                else:
-                    response_data.setdefault('books_errors', []).extend(books_serializer.errors)
-            if chapters_to_create:
-                chapters_serializer = ChapterSerializer(data=chapters_to_create, many=True)
-                if chapters_serializer.is_valid():
-                    chapters_serializer.save()
-                    response_data['chapters'] = chapters_serializer.data
-                else:
-                    response_data.setdefault('chapters_errors', []).extend(chapters_serializer.errors)
+        books_data = request.data.get('books', [])
+        chapters_data = request.data.get('chapters', [])
+
+        response_data = self._validate_and_create_books(books_data)
+        response_data.update(self._validate_and_create_chapters(chapters_data))
+
+        if response_data:
             return Response(response_data, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response(status=status.HTTP_NO_CONTENT)
+
+    def _validate_and_create_books(self, books_data):
+        """
+        Validates and creates books, returning a dictionary with results.
+        """
+        books_to_create = []
+        errors = []
+        for book_data in books_data:
+            existing_book = Book.objects.filter(title=book_data.get('title')).first()
+            if existing_book:
+                errors.append(f"Book '{existing_book.title}' already exists.")
+            else:
+                books_to_create.append(book_data)
+
+        if books_to_create:
+            serializer = BookSerializer(data=books_to_create, many=True)
+            if serializer.is_valid():
+                serializer.save()
+                return {'books': serializer.data}
+            else:
+                errors.extend(serializer.errors)
+
+        return {'books_errors': errors}
+
+    def _validate_and_create_chapters(self, chapters_data):
+        """
+        Validates and creates chapters, returning a dictionary with results.
+        """
+        chapters_to_create = []
+        errors = []
+        for chapter_data in chapters_data:
+            existing_chapter = Chapter.objects.filter(title=chapter_data.get('title')).first()
+            if existing_chapter:
+                errors.append(f"Chapter '{existing_chapter.title}' already exists.")
+            else:
+                chapters_to_create.append(chapter_data)
+
+        if chapters_to_create:
+            serializer = ChapterSerializer(data=chapters_data, many=True)
+            if serializer.is_valid():
+                serializer.save()
+                return {'chapters': serializer.data}
+            else:
+                errors.extend(serializer.errors)
+
+        return {'chapters_errors': errors}
 
 logger = logging.getLogger(__name__)
 @api_view(['POST'])
@@ -188,104 +208,49 @@ def createBook(request):
     """
     Create a book or multiple books.
 
-    Handles both single book creation and bulk creation
-    (sending a list of book data in the request body).
+    Handles both single book creation and bulk creation (sending a list of
+    book data in the request body).
 
     Returns detailed success and error information for each book
     in the response data.
     """
 
-    print("Request Data:", request.data)  # Print request data for debugging
-    logger.info("Request Data:", request.data)
-    if isinstance(request.data, list):  # Handle bulk creation
-        success_data = []
-        error_data = []
-        for book_data in request.data:
-            try:
-                # Create the author if it doesn't exist
-                author, created = Author.objects.get_or_create(name=book_data['author'])
+    response_data = {"success": [], "error": []}
 
-                serializer = BookSerializer(data=book_data)
-                if serializer.is_valid():
-                    serializer.validated_data['author'] = author  # Set the author object
-                    try:
-                        # Create genres if they don't exist
-                        genres = [Genre.objects.get_or_create(name=genre_name)[0] for genre_name in book_data.get('genres', [])]
+    for book_data in request.data:
+        try:
+            author, created = Author.objects.get_or_create(name=book_data['author'])
+            serializer = BookSerializer(data=book_data)
 
-                        book = serializer.save()
-
-                        # Associate genres with the book
-                        book.genres.add(*genres)
-
-                        success_data.append({
-                            "success": "Book created successfully",
-                            "book_data": serializer.data
-                        })
-                    except ValidationError as e:
-                        # Log specific validation errors
-                        print(f"Validation error creating book ({book_data}): {e}")
-                        logger.error(f"Validation error creating book ({book_data}): {e}")
-                        error_data.append({
-                            "error": str(e),  # Get detailed error message
-                            "book_data": book_data
-                        })
-                else:
-                    error_data.append({
-                        "error": serializer.errors,  # Use serializer errors for detailed messages
-                        "book_data": book_data
-                    })
-
-            except Exception as e:
-                # Handle other errors during book creation
-                print(f"Error creating book: {e}")
-                logger.error(f"Error creating book: {e}")
-                error_data.append({
-                    "error": f"An unexpected error occurred creating book: {e}",
+            if serializer.is_valid():
+                serializer.validated_data['author'] = author
+                genres = [
+                    Genre.objects.get_or_create(name=genre_name)[0]
+                    for genre_name in book_data.get('genres', [])
+                ]
+                book = serializer.save()
+                book.genres.add(*genres)
+                response_data["success"].append({
+                    "success": "Book created successfully",
+                    "book_data": serializer.data
+                })
+            else:
+                response_data["error"].append({
+                    "error": str(serializer.errors),
                     "book_data": book_data
                 })
-
-        response_data = {
-            "success": success_data,
-            "error": error_data
-        }
-        return Response(response_data, status=status.HTTP_201_CREATED)
-
-    else:  # Handle single book creation
-        try:
-            # Create the author if it doesn't exist
-            author, created = Author.objects.get_or_create(name=request.data['author'])
-
-            serializer = BookSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.validated_data['author'] = author  # Set the author object
-                try:
-                    # Create genres if they don't exist
-                    genres = [Genre.objects.get_or_create(name=genre_name)[0] for genre_name in request.data.get('genres', [])]
-
-                    book = serializer.save()
-
-                    # Associate genres with the book
-                    book.genres.add(*genres)
-
-                    return Response({
-                        "success": "Book created successfully",
-                        "book_data": serializer.data
-                    }, status=status.HTTP_201_CREATED)
-                except ValidationError as e:
-                    # Log specific validation errors
-                    print(f"Validation error creating book: {e}")
-                    logger.error(f"Validation error creating book: {e}")
-                    return Response({
-                        "error": str(e),  # Get detailed error message
-                    }, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                print("Serializer Errors:", serializer.errors)  # Print serializer errors
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            # Handle other errors during book creation
             print(f"Error creating book: {e}")
             logger.error(f"Error creating book: {e}")
-            return Response({"detail": "An unexpected error occurred while creating book(s)."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            response_data["error"].append({
+                "error": f"An unexpected error occurred creating book: {e}",
+                "book_data": book_data
+            })
+
+    if response_data["success"]:
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    else:
+        return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
     
 @api_view(['GET'])
 def getGenreDistribution(request):
