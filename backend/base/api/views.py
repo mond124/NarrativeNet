@@ -13,6 +13,7 @@ from .serializers import BookSerializer, ChapterSerializer, UserProfileSerialize
 from django.db.models import Q, Count
 from django.db import transaction
 from django.http import Http404
+from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 import matplotlib.pyplot as plt
 import logging
