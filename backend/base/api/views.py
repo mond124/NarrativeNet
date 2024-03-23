@@ -14,6 +14,7 @@ from django.db.models import Q, Count
 from django.db import transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from django.core.cache import cache
 import matplotlib.pyplot as plt
 import logging
 
@@ -39,19 +40,22 @@ def getBooks(request):
     Retrieve books with sorting and filtering including user profile data.
     """
     try:
-        sort_by = request.query_params.get('sort_by', 'title')  
-        genre = request.query_params.get('genre', None)  
+        sort_by = request.query_params.get('sort_by', 'title')
+        genre = request.query_params.get('genre', None)
 
         # Validate sort_by parameter
         if sort_by not in ['title', 'rating']:
             raise ValidationError("Invalid value for 'sort_by'. It must be either 'title' or 'rating'.")
 
-        books = Book.objects.select_related('author__userprofile').filter(genres__name__iexact=genre) if genre else Book.objects.select_related('author__userprofile').all()
-
-        if sort_by == 'title':
-            books = books.order_by('title')
-        elif sort_by == 'rating':
-            books = books.order_by('-rating')  
+        # Use caching for frequently accessed data (e.g., all books)
+        cache_key = f'books_{sort_by}_{genre}'
+        books = cache.get(cache_key)
+        if books is None:
+            books_query = Book.objects.select_related('author__userprofile')
+            if genre:
+                books_query = books_query.filter(genres__name__iexact=genre)
+            books = books_query.order_by(sort_by)
+            cache.set(cache_key, books, timeout=60 * 60)  # Cache for 1 hour
 
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
