@@ -158,15 +158,19 @@ class BulkCreateChaptersAPIView(APIView):
 
 class BulkCreateBooksAndChaptersAPIView(APIView):
     """
-    Bulk create books and chapters.
+    Bulk create books and chapters with validation and potential transaction.
     """
 
     def post(self, request, format=None):
         books_data = request.data.get('books', [])
         chapters_data = request.data.get('chapters', [])
 
-        response_data = self._validate_and_create_books(books_data)
-        response_data.update(self._validate_and_create_chapters(chapters_data))
+        response_data = {}
+
+        # Validate and create books in a transaction for data integrity
+        with transaction.atomic():
+            response_data.update(self._validate_and_create_books(books_data))
+            response_data.update(self._validate_and_create_chapters(chapters_data))
 
         if response_data:
             return Response(response_data, status=status.HTTP_201_CREATED)
@@ -189,12 +193,15 @@ class BulkCreateBooksAndChaptersAPIView(APIView):
         if books_to_create:
             serializer = BookSerializer(data=books_to_create, many=True)
             if serializer.is_valid():
-                serializer.save()
-                return {'books': serializer.data}
+                books = serializer.save()
+                for book in books:
+                    genres = [Genre.objects.get_or_create(name=genre_name)[0] for genre_name in book_data.get('genres', [])]
+                    book.genres.add(*genres)
+                response_data = {'books': serializer.data}
             else:
                 errors.extend(serializer.errors)
 
-        return {'books_errors': errors}
+        return {'books_errors': errors} if errors else response_data
 
     def _validate_and_create_chapters(self, chapters_data):
         """
@@ -210,14 +217,14 @@ class BulkCreateBooksAndChaptersAPIView(APIView):
                 chapters_to_create.append(chapter_data)
 
         if chapters_to_create:
-            serializer = ChapterSerializer(data=chapters_data, many=True)
+            serializer = ChapterSerializer(data=chapters_to_create, many=True)
             if serializer.is_valid():
                 serializer.save()
-                return {'chapters': serializer.data}
+                response_data = {'chapters': serializer.data}
             else:
                 errors.extend(serializer.errors)
 
-        return {'chapters_errors': errors}
+        return {'chapters_errors': errors} if errors else response_data
 
 logger = logging.getLogger(__name__)
 @api_view(['POST'])
