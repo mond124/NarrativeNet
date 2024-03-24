@@ -89,22 +89,27 @@ def getBooksByGenre(request, genre_name):
 @api_view(['GET'])
 def searchBooks(request):
     """
-    Search books by title or synopsis.
+    Search books by title or synopsis using fuzzy matching.
     """
     try:
         query = request.query_params.get('q', '')
         if not query:
             raise ValidationError("Please provide a search query.")
 
-        results = Book.objects.filter(Q(title__icontains=query) | Q(synopsis__icontains=query))
-        if not results.exists():
+        # Filter books with case-insensitive search and prefetch related data
+        books = Book.objects.select_related('author__userprofile').filter(
+            Q(title__icontains=query) | Q(synopsis__icontains=query)
+        ).prefetch_related('genres')
+
+        if not books.exists():
             return Response({"detail": "No books found for the search query."}, status=status.HTTP_404_NOT_FOUND)
-        
-        titles = [book.title for book in results]
+
+        titles = [book.title for book in books]
         fuzzy_results = process.extract(query, titles, limit=5)
 
-        fuzzy_matching_results = [results.get(title=title) for title, similarity in fuzzy_results if similarity >= 60]
-
+        fuzzy_matching_results = [
+            book for book in books if book.title in [result[0] for result in fuzzy_results] if fuzz.ratio(query.lower(), book.title.lower()) >= 60
+        ]
         fuzzy_matching_results.sort(key=lambda x: fuzz.ratio(query.lower(), x.title.lower()), reverse=True)
         serializer = BookSerializer(fuzzy_matching_results, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
