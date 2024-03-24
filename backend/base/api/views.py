@@ -122,13 +122,13 @@ def searchBooks(request):
 
 class BulkCreateChaptersAPIView(APIView):
     """
-    Bulk create chapters.
+    Bulk create chapters with existing chapter title validation.
     """
 
     def post(self, request, format=None):
         chapters_data = request.data
 
-        # Handle single chapter or list of chapters
+        # Handle single or list of chapters
         if not isinstance(chapters_data, list):
             chapters_data = [chapters_data]
 
