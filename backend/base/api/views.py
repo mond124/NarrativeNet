@@ -35,29 +35,34 @@ class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
 
 @api_view(['GET'])
-def getBooks(request):
+def get_books(request):
     """
     Retrieve books with sorting and filtering including user profile data.
     """
     try:
-        sort_by = request.query_params.get('sort_by', 'title')  
-        genre = request.query_params.get('genre', None)  
+        sort_by = request.query_params.get('sort_by', 'title')
+        genre = request.query_params.get('genre', None)
 
         # Validate sort_by parameter
         if sort_by not in ['title', 'rating']:
             raise ValidationError("Invalid value for 'sort_by'. It must be either 'title' or 'rating'.")
 
-        books = Book.objects.select_related('author__userprofile').filter(genres__name__iexact=genre) if genre else Book.objects.select_related('author__userprofile').all()
+        books = Book.objects.select_related('author__userprofile').filter(
+            genres__name__iexact=genre
+        ) if genre else Book.objects.select_related('author__userprofile').all()
 
         if sort_by == 'title':
             books = books.order_by('title')
         elif sort_by == 'rating':
-            books = books.order_by('-rating')  
+            books = books.order_by('-rating')
 
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    except ValidationError as e:
+        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Error retrieving books: {e}")
+        return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 def getBooksByGenre(request, genre_name):
