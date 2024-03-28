@@ -13,7 +13,9 @@ from .serializers import BookSerializer, ChapterSerializer, UserProfileSerialize
 from django.db.models import Q, Count
 from django.db import transaction
 from django.http import Http404
+from django.core.cache import cache
 from django.shortcuts import get_object_or_404
+from django.core.cache import cache
 import matplotlib.pyplot as plt
 import logging
 
@@ -39,19 +41,22 @@ def getBooks(request):
     Retrieve books with sorting and filtering including user profile data.
     """
     try:
-        sort_by = request.query_params.get('sort_by', 'title')  
-        genre = request.query_params.get('genre', None)  
+        sort_by = request.query_params.get('sort_by', 'title')
+        genre = request.query_params.get('genre', None)
 
         # Validate sort_by parameter
         if sort_by not in ['title', 'rating']:
             raise ValidationError("Invalid value for 'sort_by'. It must be either 'title' or 'rating'.")
 
-        books = Book.objects.select_related('author__userprofile').filter(genres__name__iexact=genre) if genre else Book.objects.select_related('author__userprofile').all()
-
-        if sort_by == 'title':
-            books = books.order_by('title')
-        elif sort_by == 'rating':
-            books = books.order_by('-rating')  
+        # Use caching for frequently accessed data (e.g., all books)
+        cache_key = f'books_{sort_by}_{genre}'
+        books = cache.get(cache_key)
+        if books is None:
+            books_query = Book.objects.select_related('author__userprofile')
+            if genre:
+                books_query = books_query.filter(genres__name__iexact=genre)
+            books = books_query.order_by(sort_by)
+            cache.set(cache_key, books, timeout=60 * 60)  # Cache for 1 hour
 
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -65,11 +70,18 @@ def getBooksByGenre(request, genre_name):
     """
     try:
         genres = [genre.strip() for genre in genre_name.split(',')]
-        # Validate genre_name parameter
-        for genre in genres:
-            if not Genre.objects.filter(name__iexact=genre).exists():
-                raise ValidationError(f"Genre '{genre}' does not exist.")
-        
+
+        # Validate genre_name parameter with potential caching
+        cache_key = f'genre_validation_{genre_name}'
+        valid_genres = cache.get(cache_key)
+        if valid_genres is None:
+            valid_genres = {genre.name for genre in Genre.objects.all()}
+            cache.set(cache_key, valid_genres, timeout=60 * 60 * 24)  # Cache for 1 day
+
+        invalid_genres = [genre for genre in genres if genre not in valid_genres]
+        if invalid_genres:
+            raise ValidationError(f"Genre(s) '{', '.join(invalid_genres)}' do not exist.")
+
         books = Book.objects.select_related('author__userprofile').filter(genres__name__in=genres).distinct()
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -81,22 +93,27 @@ def getBooksByGenre(request, genre_name):
 @api_view(['GET'])
 def searchBooks(request):
     """
-    Search books by title or synopsis.
+    Search books by title or synopsis using fuzzy matching.
     """
     try:
         query = request.query_params.get('q', '')
         if not query:
             raise ValidationError("Please provide a search query.")
 
-        results = Book.objects.filter(Q(title__icontains=query) | Q(synopsis__icontains=query))
-        if not results.exists():
+        # Filter books with case-insensitive search and prefetch related data
+        books = Book.objects.select_related('author__userprofile').filter(
+            Q(title__icontains=query) | Q(synopsis__icontains=query)
+        ).prefetch_related('genres')
+
+        if not books.exists():
             return Response({"detail": "No books found for the search query."}, status=status.HTTP_404_NOT_FOUND)
-        
-        titles = [book.title for book in results]
+
+        titles = [book.title for book in books]
         fuzzy_results = process.extract(query, titles, limit=5)
 
-        fuzzy_matching_results = [results.get(title=title) for title, similarity in fuzzy_results if similarity >= 60]
-
+        fuzzy_matching_results = [
+            book for book in books if book.title in [result[0] for result in fuzzy_results] if fuzz.ratio(query.lower(), book.title.lower()) >= 60
+        ]
         fuzzy_matching_results.sort(key=lambda x: fuzz.ratio(query.lower(), x.title.lower()), reverse=True)
         serializer = BookSerializer(fuzzy_matching_results, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -105,13 +122,13 @@ def searchBooks(request):
 
 class BulkCreateChaptersAPIView(APIView):
     """
-    Bulk create chapters.
+    Bulk create chapters with existing chapter title validation.
     """
 
     def post(self, request, format=None):
         chapters_data = request.data
 
-        # Handle single chapter or list of chapters
+        # Handle single or list of chapters
         if not isinstance(chapters_data, list):
             chapters_data = [chapters_data]
 
@@ -141,15 +158,19 @@ class BulkCreateChaptersAPIView(APIView):
 
 class BulkCreateBooksAndChaptersAPIView(APIView):
     """
-    Bulk create books and chapters.
+    Bulk create books and chapters with validation and potential transaction.
     """
 
     def post(self, request, format=None):
         books_data = request.data.get('books', [])
         chapters_data = request.data.get('chapters', [])
 
-        response_data = self._validate_and_create_books(books_data)
-        response_data.update(self._validate_and_create_chapters(chapters_data))
+        response_data = {}
+
+        # Validate and create books in a transaction for data integrity
+        with transaction.atomic():
+            response_data.update(self._validate_and_create_books(books_data))
+            response_data.update(self._validate_and_create_chapters(chapters_data))
 
         if response_data:
             return Response(response_data, status=status.HTTP_201_CREATED)
@@ -172,12 +193,15 @@ class BulkCreateBooksAndChaptersAPIView(APIView):
         if books_to_create:
             serializer = BookSerializer(data=books_to_create, many=True)
             if serializer.is_valid():
-                serializer.save()
-                return {'books': serializer.data}
+                books = serializer.save()
+                for book in books:
+                    genres = [Genre.objects.get_or_create(name=genre_name)[0] for genre_name in book_data.get('genres', [])]
+                    book.genres.add(*genres)
+                response_data = {'books': serializer.data}
             else:
                 errors.extend(serializer.errors)
 
-        return {'books_errors': errors}
+        return {'books_errors': errors} if errors else response_data
 
     def _validate_and_create_chapters(self, chapters_data):
         """
@@ -193,14 +217,14 @@ class BulkCreateBooksAndChaptersAPIView(APIView):
                 chapters_to_create.append(chapter_data)
 
         if chapters_to_create:
-            serializer = ChapterSerializer(data=chapters_data, many=True)
+            serializer = ChapterSerializer(data=chapters_to_create, many=True)
             if serializer.is_valid():
                 serializer.save()
-                return {'chapters': serializer.data}
+                response_data = {'chapters': serializer.data}
             else:
                 errors.extend(serializer.errors)
 
-        return {'chapters_errors': errors}
+        return {'chapters_errors': errors} if errors else response_data
 
 logger = logging.getLogger(__name__)
 @api_view(['POST'])
