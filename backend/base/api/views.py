@@ -64,34 +64,39 @@ def getBooks(request):
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
-def get_books(request):
+def get_books_by_genre(request, genre_name):
     """
-    Retrieve books with sorting and filtering including user profile data.
+    Retrieve books by genre including user profile data, with caching.
     """
     try:
-        sort_by = request.query_params.get('sort_by', 'title')
-        genre = request.query_params.get('genre', None)
+        genres = [genre.strip() for genre in genre_name.split(',')]
 
-        # Validate sort_by parameter
-        if sort_by not in ['title', 'rating']:
-            raise ValidationError("Invalid value for 'sort_by'. It must be either 'title' or 'rating'.")
+        # Validate genre_name parameter with potential caching
+        cache_key = f'books_by_genre_{genre_name}'
+        valid_genres = cache.get(cache_key)
+        if valid_genres is None:
+            valid_genres = {genre.name for genre in Genre.objects.all()}
+            cache.set(cache_key, valid_genres, timeout=60 * 60 * 24)  # Cache for 1 day
 
-        # Use caching for frequently accessed data (e.g., all books)
-        cache_key = f'books_{sort_by}_{genre}'
-        books = cache.get(cache_key)
+        invalid_genres = [genre for genre in genres if genre not in valid_genres]
+        if invalid_genres:
+            raise ValidationError(f"Genre(s) '{', '.join(invalid_genres)}' do not exist.")
+
+        # Use caching for frequently accessed genre combinations
+        genre_cache_key = f'genre_books_{genre_name}'
+        books = cache.get(genre_cache_key)
         if books is None:
-            books_query = Book.objects.select_related('author__userprofile')
-            if genre:
-                books_query = books_query.filter(genres__name__iexact=genre)
-            books = books_query.order_by(sort_by)
-            cache.set(cache_key, books, timeout=60 * 60)  # Cache for 1 hour (adjust as needed)
+            books = Book.objects.select_related('author__userprofile').filter(genres__name__in=genres).distinct()
+            cache.set(genre_cache_key, books, timeout=60 * 60)  # Cache for 1 hour (adjust as needed)
 
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     except ValidationError as e:
         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except Book.DoesNotExist:
+        return Response({"detail": "Books not found for the specified genre(s)."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        logger.error(f"Error retrieving books: {e}")
+        logger.error(f"Error retrieving books by genre: {e}")
         return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
