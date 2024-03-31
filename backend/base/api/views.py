@@ -64,15 +64,15 @@ def getBooks(request):
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
-def getBooksByGenre(request, genre_name):
+def get_books_by_genre(request, genre_name):
     """
-    Retrieve books by genre including user profile data.
+    Retrieve books by genre including user profile data, with caching.
     """
     try:
         genres = [genre.strip() for genre in genre_name.split(',')]
 
         # Validate genre_name parameter with potential caching
-        cache_key = f'genre_validation_{genre_name}'
+        cache_key = f'books_by_genre_{genre_name}'
         valid_genres = cache.get(cache_key)
         if valid_genres is None:
             valid_genres = {genre.name for genre in Genre.objects.all()}
@@ -82,13 +82,22 @@ def getBooksByGenre(request, genre_name):
         if invalid_genres:
             raise ValidationError(f"Genre(s) '{', '.join(invalid_genres)}' do not exist.")
 
-        books = Book.objects.select_related('author__userprofile').filter(genres__name__in=genres).distinct()
+        # Use caching for frequently accessed genre combinations
+        genre_cache_key = f'genre_books_{genre_name}'
+        books = cache.get(genre_cache_key)
+        if books is None:
+            books = Book.objects.select_related('author__userprofile').filter(genres__name__in=genres).distinct()
+            cache.set(genre_cache_key, books, timeout=60 * 60)  # Cache for 1 hour (adjust as needed)
+
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    except ValidationError as e:
+        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except Book.DoesNotExist:
         return Response({"detail": "Books not found for the specified genre(s)."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Error retrieving books by genre: {e}")
+        return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 def searchBooks(request):
