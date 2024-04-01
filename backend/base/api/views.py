@@ -37,36 +37,27 @@ class MyTokenObtainPairView(TokenObtainPairView):
 @api_view(['GET'])
 def getBooks(request):
     """
-    Retrieve books with sorting and filtering including user profile data, with caching.
+    Retrieve books with sorting and filtering including user profile data.
     """
     try:
-        sort_by = request.query_params.get('sort_by', 'title')
-        genre = request.query_params.get('genre', None)
+        sort_by = request.query_params.get('sort_by', 'title')  
+        genre = request.query_params.get('genre', None)  
 
         # Validate sort_by parameter
         if sort_by not in ['title', 'rating']:
             raise ValidationError("Invalid value for 'sort_by'. It must be either 'title' or 'rating'.")
 
-        # Construct a unique cache key based on sort_by and genre (if provided)
-        cache_key = f'books_{sort_by}'
-        if genre:
-            cache_key += f'-genre_{genre}'
+        books = Book.objects.select_related('author__userprofile').filter(genres__name__iexact=genre) if genre else Book.objects.select_related('author__userprofile').all()
 
-        books = cache.get(cache_key)
-        if books is None:
-            books_query = Book.objects.select_related('author__userprofile')
-            if genre:
-                books_query = books_query.filter(genres__name__iexact=genre)
-            books = books_query.order_by(sort_by)
-            cache.set(cache_key, books, timeout=60 * 60)  # Cache for 1 hour (adjust as needed)
+        if sort_by == 'title':
+            books = books.order_by('title')
+        elif sort_by == 'rating':
+            books = books.order_by('-rating')  
 
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    except ValidationError as e:
-        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        logger.error(f"Error retrieving books: {e}")
-        return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 def get_books_by_genre(request, genre_name):
