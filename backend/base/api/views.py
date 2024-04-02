@@ -15,8 +15,11 @@ from django.db import transaction
 from django.http import Http404
 from django.core.cache import cache
 from django.shortcuts import get_object_or_404
+from django.core.cache import cache
 import matplotlib.pyplot as plt
 import logging
+
+logger = logging.getLogger(__name__)
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
@@ -35,12 +38,11 @@ class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
 
 @api_view(['GET'])
-def getBooks(request):
+def get_books(request):
     """
     Retrieve books with sorting and filtering including user profile data.
     """
     try:
-        # Retrieve query parameters
         sort_by = request.query_params.get('sort_by', 'title')
         genre = request.query_params.get('genre', None)
 
@@ -62,7 +64,6 @@ def getBooks(request):
         elif sort_by == 'rating':
             books = books.order_by('-rating')
 
-        # Serialize queryset and return response
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -101,16 +102,19 @@ def get_books_by_genre(request, genre_name):
 
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
     except ValidationError as e:
         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     except Book.DoesNotExist:
         return Response({"detail": "Books not found for the specified genre(s)."}, status=status.HTTP_404_NOT_FOUND)
+
     except Exception as e:
         logger.error(f"Error retrieving books by genre: {e}")
         return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
-def searchBooks(request):
+def search_books(request):
     """
     Search books by title or synopsis using fuzzy matching.
     """
@@ -136,6 +140,7 @@ def searchBooks(request):
         fuzzy_matching_results.sort(key=lambda x: fuzz.ratio(query.lower(), x.title.lower()), reverse=True)
         serializer = BookSerializer(fuzzy_matching_results, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
     except Exception as e:
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -245,9 +250,8 @@ class BulkCreateBooksAndChaptersAPIView(APIView):
 
         return {'chapters_errors': errors} if errors else response_data
 
-logger = logging.getLogger(__name__)
 @api_view(['POST'])
-def createBook(request):
+def create_book(request):
     """
     Create a book or multiple books.
 
@@ -294,9 +298,9 @@ def createBook(request):
         return Response(response_data, status=status.HTTP_201_CREATED)
     else:
         return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
-    
+
 @api_view(['GET'])
-def getGenreDistribution(request):
+def get_genre_distribution(request):
     """
     Retrieve the distribution of books by genre.
     """
@@ -325,6 +329,7 @@ def getGenreDistribution(request):
 
         # Return the data suitable for Plotly.js
         return Response({'plot_data': data_for_plotly})
+
     except Exception as e:
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -334,7 +339,7 @@ class UserProfileDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
 @api_view(['GET'])
-def getUserProfile(request, user_id):
+def get_user_profile(request, user_id):
     try:
         user_profile = UserProfile.objects.get(user_id=user_id)
         serializer = UserProfileSerializer(user_profile)
@@ -343,7 +348,7 @@ def getUserProfile(request, user_id):
         raise Http404("User profile does not exist")
 
 @api_view(['PUT'])
-def updateUserProfile(request, user_id):
+def update_user_profile(request, user_id):
     try:
         user_profile = UserProfile.objects.get(user_id=user_id)
         serializer = UserProfileSerializer(user_profile, data=request.data)
@@ -353,9 +358,9 @@ def updateUserProfile(request, user_id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     except UserProfile.DoesNotExist:
         raise Http404("User profile does not exist")
-    
+
 @api_view(['GET'])
-def getChaptersByBook(request, book_id):
+def get_chapters_by_book(request, book_id):
     """
     Retrieve chapters by book.
     """
@@ -369,7 +374,7 @@ def getChaptersByBook(request, book_id):
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
-def getRoutes(request):
+def get_routes(request):
     """
     Retrieve available routes.
     """
