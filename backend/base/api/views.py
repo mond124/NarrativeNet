@@ -127,7 +127,7 @@ def getBooksByGenre(request, genre_name):
         return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
-def search_books(request):
+def searchBooks(request):
     """
     Search books by title or synopsis using fuzzy matching.
     """
