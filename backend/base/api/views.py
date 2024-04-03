@@ -91,7 +91,7 @@ def getBooks(request):
         return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
-def get_books_by_genre(request, genre_name):
+def getBooksByGenre(request, genre_name):
     """
     Retrieve books by genre including user profile data, with caching.
     """
