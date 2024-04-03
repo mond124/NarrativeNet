@@ -38,7 +38,7 @@ class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
 
 @api_view(['GET'])
-def get_books(request):
+def getBooks(request):
     """
     Retrieve books with sorting and filtering including user profile data.
     """
@@ -127,7 +127,7 @@ def get_books_by_genre(request, genre_name):
         return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
-def searchBooks(request):
+def search_books(request):
     """
     Search books by title or synopsis using fuzzy matching.
     """
