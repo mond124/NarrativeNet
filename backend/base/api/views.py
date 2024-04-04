@@ -16,6 +16,7 @@ from django.http import Http404
 from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 from django.core.cache import cache
+from django.contrib.postgres.search import SearchVector, SearchQuery, TrigramSimilarity
 import matplotlib.pyplot as plt
 import logging
 
