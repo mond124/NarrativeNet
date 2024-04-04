@@ -18,6 +18,7 @@ from django.shortcuts import get_object_or_404
 from django.core.cache import cache
 from django.contrib.postgres.search import SearchVector, SearchQuery, TrigramSimilarity
 import matplotlib.pyplot as plt
+import math
 import logging
 
 logger = logging.getLogger(__name__)
@@ -140,6 +141,7 @@ def getBooksByGenre(request, genre_name):
         logger.error(f"Error retrieving books by genre: {e}")
         return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@api_view(['GET'])
 def searchBooks(request):
     """
     Search books by title or synopsis using fuzzy matching.
