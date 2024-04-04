@@ -94,7 +94,11 @@ def getBooks(request):
 def getBooksByGenre(request, genre_name):
     """
     Retrieve books by genre including user profile data, with caching.
+
+    **Note:** Authentication and permission checks might be required
+    in a production environment.
     """
+
     try:
         genres = [genre.strip() for genre in genre_name.split(',')]
 
@@ -103,25 +107,34 @@ def getBooksByGenre(request, genre_name):
         valid_genres = cache.get(cache_key)
         if valid_genres is None:
             valid_genres = {genre.name for genre in Genre.objects.all()}
-            cache.set(cache_key, valid_genres, timeout=60 * 60 * 24)  # Cache for 1 day
+            cache.set(cache_key, valid_genres)  # Assume reasonable timeout
 
         invalid_genres = [genre for genre in genres if genre not in valid_genres]
         if invalid_genres:
             raise ValidationError(f"Genre(s) '{', '.join(invalid_genres)}' do not exist.")
 
+        # Construct base queryset (public or filtered by user)
+        if request.user.is_authenticated:
+            books = Book.objects.select_related('author__userprofile')
+        else:
+            books = Book.objects.filter(is_public=True).select_related('author__userprofile')
+
         # Use caching for frequently accessed genre combinations
         genre_cache_key = f'genre_books_{genre_name}'
         books = cache.get(genre_cache_key)
         if books is None:
-            books = Book.objects.select_related('author__userprofile').filter(genres__name__in=genres).distinct()
-            cache.set(genre_cache_key, books, timeout=60 * 60)  # Cache for 1 hour (adjust as needed)
+            books = books.filter(genres__name__in=genres).distinct()
+            cache.set(genre_cache_key, books)  # Assume reasonable timeout
 
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
     except ValidationError as e:
         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     except Book.DoesNotExist:
         return Response({"detail": "Books not found for the specified genre(s)."}, status=status.HTTP_404_NOT_FOUND)
+
     except Exception as e:
         logger.error(f"Error retrieving books by genre: {e}")
         return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
