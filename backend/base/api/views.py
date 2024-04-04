@@ -140,35 +140,61 @@ def getBooksByGenre(request, genre_name):
         logger.error(f"Error retrieving books by genre: {e}")
         return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['GET'])
 def searchBooks(request):
     """
     Search books by title or synopsis using fuzzy matching.
+
+    Optionally filter by genre and include user profile data.
+
+    Supports pagination using 'page' and 'page_size' query parameters.
     """
+
     try:
-        query = request.query_params.get('q', '')
-        if not query:
-            raise ValidationError("Please provide a search query.")
+        query = request.query_params.get('query')
+        genre = request.query_params.get('genre', None)
+        page = int(request.query_params.get('page', 1))  # Default to page 1
+        page_size = int(request.query_params.get('page_size', 10))  # Default to 10 results per page
 
-        # Filter books with case-insensitive search and prefetch related data
-        books = Book.objects.select_related('author__userprofile').filter(
-            Q(title__icontains=query) | Q(synopsis__icontains=query)
-        ).prefetch_related('genres')
+        if query:
+            search_vector = SearchVector('title', 'synopsis')
+            search_query = SearchQuery(query)
 
-        if not books.exists():
-            return Response({"detail": "No books found for the search query."}, status=status.HTTP_404_NOT_FOUND)
+            # Use fuzzy matching (TrigramSimilarity)
+            books = books.annotate(similarity=TrigramSimilarity('search_vector', search_query))
+            books = books.filter(similarity__gt=0.3).order_by('-similarity')  # Adjust threshold for better results
 
-        titles = [book.title for book in books]
-        fuzzy_results = process.extract(query, titles, limit=5)
+            # Apply genre filter if provided
+            if genre:
+                books = books.filter(genres__name__iexact=genre)
 
-        fuzzy_matching_results = [
-            book for book in books if book.title in [result[0] for result in fuzzy_results] if fuzz.ratio(query.lower(), book.title.lower()) >= 60
-        ]
-        fuzzy_matching_results.sort(key=lambda x: fuzz.ratio(query.lower(), x.title.lower()), reverse=True)
-        serializer = BookSerializer(fuzzy_matching_results, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            # Implement pagination
+            total_results = books.count()
+            start_index = (page - 1) * page_size
+            end_index = start_index + page_size
+            books = books[start_index:end_index]
+
+            # Prepare pagination meta data
+            pagination_data = {
+                'page': page,
+                'page_size': page_size,
+                'total_pages': math.ceil(total_results / page_size),  # Use math.ceil for accurate page count
+                'total_results': total_results,
+            }
+
+        else:
+            # Handle case where no search query is provided (potentially return empty list)
+            books = Book.objects.none()
+            pagination_data = {'page': 1, 'page_size': 10, 'total_pages': 0, 'total_results': 0}
+
+        serializer = BookSerializer(books, many=True)
+        return Response({'books': serializer.data, 'pagination': pagination_data}, status=status.HTTP_200_OK)
+
+    except ValidationError as e:
+        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     except Exception as e:
-        return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Error searching books: {e}")
+        return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class BulkCreateChaptersAPIView(APIView):
     """
