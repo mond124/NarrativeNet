@@ -45,7 +45,7 @@ def getBooks(request):
     Retrieve books with sorting and filtering including user profile data.
     """
     try:
-        # Retrieve query parameters
+        # Get query parameters
         sort_by = request.query_params.get('sort_by', 'title')
         genre = request.query_params.get('genre', None)
 
