@@ -96,9 +96,6 @@ def getBooks(request):
 def getBooksByGenre(request, genre_name):
     """
     Retrieve books by genre including user profile data, with caching.
-
-    **Note:** Authentication and permission checks might be required
-    in a production environment.
     """
 
     try:
