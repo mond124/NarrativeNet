@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import MyTokenObtainPairView, getBooks, getBooksByGenre, BulkCreateChaptersAPIView, getRoutes, getGenreDistribution, getChaptersByBook
+from .views import MyTokenObtainPairView, getBooks, getBooksByGenre, BulkCreateChaptersAPIView, getRoutes, getGenreDistribution, getChaptersByBook, BookList
 from rest_framework_simplejwt.views import TokenRefreshView
 
 
