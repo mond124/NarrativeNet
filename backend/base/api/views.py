@@ -427,10 +427,11 @@ def getChaptersByBook(request, book_id):
     except Exception as e:
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class BookList(APIView):
-    """
-    List all books, or create a new book.
-    """
+class BookList(generics.ListCreateAPIView):
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
     def get(self, request, format=None):
         try:
             books = Book.objects.all()
