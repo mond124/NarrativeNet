@@ -432,6 +432,17 @@ class BookList(generics.ListCreateAPIView):
     serializer_class = BookSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
+    def get_queryset(self):
+        """
+        Optionally restricts the returned purchases to a given user,
+        by filtering against a `user_id` query parameter in the URL.
+        """
+        queryset = self.queryset
+        user_id = self.request.query_params.get('user_id')
+        if user_id is not None:
+            queryset = queryset.filter(user_id=user_id)
+        return queryset
+
     def get(self, request, format=None):
         try:
             books = Book.objects.all()
