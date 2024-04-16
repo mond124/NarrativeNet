@@ -16,8 +16,12 @@ from django.http import Http404
 from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 from django.core.cache import cache
+from django.contrib.postgres.search import SearchVector, SearchQuery, TrigramSimilarity
 import matplotlib.pyplot as plt
+import math
 import logging
+
+logger = logging.getLogger(__name__)
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
@@ -41,33 +45,62 @@ def getBooks(request):
     Retrieve books with sorting and filtering including user profile data.
     """
     try:
+        # Get query parameters
         sort_by = request.query_params.get('sort_by', 'title')
         genre = request.query_params.get('genre', None)
 
         # Validate sort_by parameter
-        if sort_by not in ['title', 'rating']:
-            raise ValidationError("Invalid value for 'sort_by'. It must be either 'title' or 'rating'.")
+        valid_sort_options = ['title', 'rating']
+        if sort_by not in valid_sort_options:
+            raise ValidationError(f"Invalid value for 'sort_by'. It must be one of: {', '.join(valid_sort_options)}")
 
-        # Use caching for frequently accessed data (e.g., all books)
+        # Construct cache key
         cache_key = f'books_{sort_by}_{genre}'
-        books = cache.get(cache_key)
-        if books is None:
-            books_query = Book.objects.select_related('author__userprofile')
-            if genre:
-                books_query = books_query.filter(genres__name__iexact=genre)
-            books = books_query.order_by(sort_by)
-            cache.set(cache_key, books, timeout=60 * 60)  # Cache for 1 hour
 
+        # Check if data is in cache
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return Response(cached_data, status=status.HTTP_200_OK)
+
+        # Construct base queryset
+        books = Book.objects.select_related('author__userprofile')
+
+        # Apply genre filter if provided
+        if genre:
+            books = books.filter(genres__name__iexact=genre)
+
+        # Sort queryset based on sort_by parameter
+        if sort_by == 'title':
+            books = books.order_by('title')
+        elif sort_by == 'rating':
+            books = books.order_by('-rating')
+
+        # Serialize queryset
         serializer = BookSerializer(books, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        data = serializer.data
+
+        # Cache the data
+        cache.set(cache_key, data, timeout=60 * 60)  # Cache for 1 hour
+
+        # Return response
+        return Response(data, status=status.HTTP_200_OK)
+
+    except ValidationError as e:
+        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     except Exception as e:
-        return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Error retrieving books: {e}")
+        return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
-def get_books_by_genre(request, genre_name):
+def getBooksByGenre(request, genre_name):
     """
     Retrieve books by genre including user profile data, with caching.
+
+    Note: Authentication and permission checks might be required
+    in a production environment.
     """
+
     try:
         genres = [genre.strip() for genre in genre_name.split(',')]
 
@@ -76,25 +109,34 @@ def get_books_by_genre(request, genre_name):
         valid_genres = cache.get(cache_key)
         if valid_genres is None:
             valid_genres = {genre.name for genre in Genre.objects.all()}
-            cache.set(cache_key, valid_genres, timeout=60 * 60 * 24)  # Cache for 1 day
+            cache.set(cache_key, valid_genres)  # Assume reasonable timeout
 
         invalid_genres = [genre for genre in genres if genre not in valid_genres]
         if invalid_genres:
             raise ValidationError(f"Genre(s) '{', '.join(invalid_genres)}' do not exist.")
 
+        # Construct base queryset (public or filtered by user)
+        if request.user.is_authenticated:
+            books = Book.objects.select_related('author__userprofile')
+        else:
+            books = Book.objects.filter(is_public=True).select_related('author__userprofile')
+
         # Use caching for frequently accessed genre combinations
         genre_cache_key = f'genre_books_{genre_name}'
         books = cache.get(genre_cache_key)
         if books is None:
-            books = Book.objects.select_related('author__userprofile').filter(genres__name__in=genres).distinct()
-            cache.set(genre_cache_key, books, timeout=60 * 60)  # Cache for 1 hour (adjust as needed)
+            books = books.filter(genres__name__in=genres).distinct()
+            cache.set(genre_cache_key, books)  # Assume reasonable timeout
 
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
     except ValidationError as e:
         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     except Book.DoesNotExist:
         return Response({"detail": "Books not found for the specified genre(s)."}, status=status.HTTP_404_NOT_FOUND)
+
     except Exception as e:
         logger.error(f"Error retrieving books by genre: {e}")
         return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -103,31 +145,58 @@ def get_books_by_genre(request, genre_name):
 def searchBooks(request):
     """
     Search books by title or synopsis using fuzzy matching.
+
+    Optionally filter by genre and include user profile data.
+
+    Supports pagination using 'page' and 'page_size' query parameters.
     """
+
     try:
-        query = request.query_params.get('q', '')
-        if not query:
-            raise ValidationError("Please provide a search query.")
+        query = request.query_params.get('query')
+        genre = request.query_params.get('genre', None)
+        page = int(request.query_params.get('page', 1))  # Default to page 1
+        page_size = int(request.query_params.get('page_size', 10))  # Default to 10 results per page
 
-        # Filter books with case-insensitive search and prefetch related data
-        books = Book.objects.select_related('author__userprofile').filter(
-            Q(title__icontains=query) | Q(synopsis__icontains=query)
-        ).prefetch_related('genres')
+        if query:
+            search_vector = SearchVector('title', 'synopsis')
+            search_query = SearchQuery(query)
 
-        if not books.exists():
-            return Response({"detail": "No books found for the search query."}, status=status.HTTP_404_NOT_FOUND)
+            # Use fuzzy matching (TrigramSimilarity)
+            books = books.annotate(similarity=TrigramSimilarity('search_vector', search_query))
+            books = books.filter(similarity__gt=0.3).order_by('-similarity')  # Adjust threshold for better results
 
-        titles = [book.title for book in books]
-        fuzzy_results = process.extract(query, titles, limit=5)
+            # Apply genre filter if provided
+            if genre:
+                books = books.filter(genres__name__iexact=genre)
 
-        fuzzy_matching_results = [
-            book for book in books if book.title in [result[0] for result in fuzzy_results] if fuzz.ratio(query.lower(), book.title.lower()) >= 60
-        ]
-        fuzzy_matching_results.sort(key=lambda x: fuzz.ratio(query.lower(), x.title.lower()), reverse=True)
-        serializer = BookSerializer(fuzzy_matching_results, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            # Implement pagination
+            total_results = books.count()
+            start_index = (page - 1) * page_size
+            end_index = start_index + page_size
+            books = books[start_index:end_index]
+
+            # Prepare pagination meta data
+            pagination_data = {
+                'page': page,
+                'page_size': page_size,
+                'total_pages': math.ceil(total_results / page_size),  # Use math.ceil for accurate page count
+                'total_results': total_results,
+            }
+
+        else:
+            # Handle case where no search query is provided (potentially return empty list)
+            books = Book.objects.none()
+            pagination_data = {'page': 1, 'page_size': 10, 'total_pages': 0, 'total_results': 0}
+
+        serializer = BookSerializer(books, many=True)
+        return Response({'books': serializer.data, 'pagination': pagination_data}, status=status.HTTP_200_OK)
+
+    except ValidationError as e:
+        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     except Exception as e:
-        return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Error searching books: {e}")
+        return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class BulkCreateChaptersAPIView(APIView):
     """
@@ -357,6 +426,40 @@ def getChaptersByBook(request, book_id):
         return Response({"detail": "Chapters not found for the specified book."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class BookList(generics.ListCreateAPIView):
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        """
+        Optionally restricts the returned purchases to a given user,
+        by filtering against a `user_id` query parameter in the URL.
+        """
+        queryset = self.queryset
+        user_id = self.request.query_params.get('user_id')
+        if user_id is not None:
+            queryset = queryset.filter(user_id=user_id)
+        return queryset
+
+    def get(self, request, format=None):
+        try:
+            books = Book.objects.all()
+            serializer = BookSerializer(books, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def post(self, request, format=None):
+        try:
+            serializer = BookSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 def getRoutes(request):
