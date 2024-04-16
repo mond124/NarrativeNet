@@ -6,6 +6,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.exceptions import ValidationError
 from rest_framework import generics, permissions
+from django_filters.rest_framework import DjangoFilterBackend
 from fuzzywuzzy import process, fuzz
 from plotly import graph_objs as go
 from ..models import Book, Genre, Chapter, UserProfile, Author
