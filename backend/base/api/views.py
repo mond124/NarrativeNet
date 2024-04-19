@@ -43,52 +43,32 @@ class MyTokenObtainPairView(TokenObtainPairView):
 @api_view(['GET'])
 def getBooks(request):
     """
-    Retrieve books with sorting and filtering including user profile data.
+    Fetches a list of books with optional sorting and filtering. The response includes detailed
+    user profile information associated with each book's author.
+    Uses caching to enhance performance by storing the results for frequent queries.
     """
     try:
-        # Get query parameters
         sort_by = request.query_params.get('sort_by', 'title')
         genre = request.query_params.get('genre', None)
 
-        # Validate sort_by parameter
-        valid_sort_options = ['title', 'rating']
-        if sort_by not in valid_sort_options:
-            raise ValidationError(f"Invalid value for 'sort_by'. It must be one of: {', '.join(valid_sort_options)}")
+        if sort_by not in ['title', 'rating']:
+            raise ValidationError(f"Invalid value for 'sort_by'. Allowed options are: 'title', 'rating'.")
 
-        # Construct cache key
         cache_key = f'books_{sort_by}_{genre}'
-
-        # Check if data is in cache
         cached_data = cache.get(cache_key)
         if cached_data:
             return Response(cached_data, status=status.HTTP_200_OK)
 
-        # Construct base queryset
         books = Book.objects.select_related('author__userprofile')
-
-        # Apply genre filter if provided
         if genre:
             books = books.filter(genres__name__iexact=genre)
+        books = books.order_by(sort_by if sort_by == 'title' else f'-{sort_by}')
 
-        # Sort queryset based on sort_by parameter
-        if sort_by == 'title':
-            books = books.order_by('title')
-        elif sort_by == 'rating':
-            books = books.order_by('-rating')
-
-        # Serialize queryset
         serializer = BookSerializer(books, many=True)
-        data = serializer.data
-
-        # Cache the data
-        cache.set(cache_key, data, timeout=60 * 60)  # Cache for 1 hour
-
-        # Return response
-        return Response(data, status=status.HTTP_200_OK)
-
+        cache.set(cache_key, serializer.data, timeout=3600)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     except ValidationError as e:
         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
     except Exception as e:
         logger.error(f"Error retrieving books: {e}")
         return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
