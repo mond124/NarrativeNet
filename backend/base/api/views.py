@@ -145,35 +145,56 @@ def getBooksByGenre(request, genre_name):
 @api_view(['GET'])
 def searchBooks(request):
     """
-    Allows users to search for books by title or synopsis using advanced fuzzy matching.
-    Supports filtering by genre and paginates the response to manage large datasets effectively.
+    Search books by title or synopsis using fuzzy matching.
+
+    Optionally filter by genre and include user profile data.
+
+    Supports pagination using 'page' and 'page_size' query parameters.
     """
+
     try:
         query = request.query_params.get('query')
         genre = request.query_params.get('genre', None)
-        page = int(request.query_params.get('page', 1))
-        page_size = int(request.query_params.get('page_size', 10))
+        page = int(request.query_params.get('page', 1))  # Default to page 1
+        page_size = int(request.query_params.get('page_size', 10))  # Default to 10 results per page
 
-        if not query:
-            return Response({"detail": "A query parameter is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if query:
+            search_vector = SearchVector('title', 'synopsis')
+            search_query = SearchQuery(query)
 
-        books = Book.objects.annotate(similarity=TrigramSimilarity('title', query) + TrigramSimilarity('synopsis', query)).filter(similarity__gt=0.3)
-        if genre:
-            books = books.filter(genres__name__iexact=genre)
-        books = books.order_by('-similarity')
+            # Use fuzzy matching (TrigramSimilarity)
+            books = books.annotate(similarity=TrigramSimilarity('search_vector', search_query))
+            books = books.filter(similarity__gt=0.3).order_by('-similarity')  # Adjust threshold for better results
 
-        paginator = Paginator(books, page_size)
-        page_obj = paginator.get_page(page)
+            # Apply genre filter if provided
+            if genre:
+                books = books.filter(genres__name__iexact=genre)
 
-        serializer = BookSerializer(page_obj, many=True)
-        return Response({
-            'books': serializer.data,
-            'page': page,
-            'pages': paginator.num_pages,
-            'total': paginator.count
-        }, status=status.HTTP_200_OK)
+            # Implement pagination
+            total_results = books.count()
+            start_index = (page - 1) * page_size
+            end_index = start_index + page_size
+            books = books[start_index:end_index]
+
+            # Prepare pagination meta data
+            pagination_data = {
+                'page': page,
+                'page_size': page_size,
+                'total_pages': math.ceil(total_results / page_size),  # Use math.ceil for accurate page count
+                'total_results': total_results,
+            }
+
+        else:
+            # Handle case where no search query is provided (potentially return empty list)
+            books = Book.objects.none()
+            pagination_data = {'page': 1, 'page_size': 10, 'total_pages': 0, 'total_results': 0}
+
+        serializer = BookSerializer(books, many=True)
+        return Response({'books': serializer.data, 'pagination': pagination_data}, status=status.HTTP_200_OK)
+
     except ValidationError as e:
         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     except Exception as e:
         logger.error(f"Error searching books: {e}")
         return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
