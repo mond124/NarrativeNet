@@ -48,27 +48,43 @@ def getBooks(request):
     Uses caching to enhance performance by storing the results for frequent queries.
     """
     try:
+        # Retrieve query parameters
         sort_by = request.query_params.get('sort_by', 'title')
         genre = request.query_params.get('genre', None)
 
+        # Validate sort_by parameter
         if sort_by not in ['title', 'rating']:
             raise ValidationError(f"Invalid value for 'sort_by'. Allowed options are: 'title', 'rating'.")
 
+        # Construct cache key
         cache_key = f'books_{sort_by}_{genre}'
         cached_data = cache.get(cache_key)
+
         if cached_data:
             return Response(cached_data, status=status.HTTP_200_OK)
 
+        # Retrieve books queryset
         books = Book.objects.select_related('author__userprofile')
+
+        # Apply genre filter if provided
         if genre:
             books = books.filter(genres__name__iexact=genre)
+
+        # Order books queryset
         books = books.order_by(sort_by if sort_by == 'title' else f'-{sort_by}')
 
+        # Serialize data
         serializer = BookSerializer(books, many=True)
-        cache.set(cache_key, serializer.data, timeout=3600)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        data = serializer.data
+
+        # Cache data
+        cache.set(cache_key, data, timeout=3600)
+
+        return Response(data, status=status.HTTP_200_OK)
+
     except ValidationError as e:
         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     except Exception as e:
         logger.error(f"Error retrieving books: {e}")
         return Response({"detail": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
