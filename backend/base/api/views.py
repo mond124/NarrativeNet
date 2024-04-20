@@ -43,9 +43,9 @@ class MyTokenObtainPairView(TokenObtainPairView):
 @api_view(['GET'])
 def getBooks(request):
     """
-    Fetches a list of books with optional sorting and filtering. The response includes detailed
-    user profile information associated with each book's author.
-    Uses caching to enhance performance by storing the results for frequent queries.
+    Fetches a list of books with optional sorting and filtering.
+    Response includes detailed user profile info associated with each author.
+    Uses caching for better performance by storing results of frequent queries.
     """
     try:
         # Retrieve query parameters
