@@ -1,11 +1,12 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from rest_framework import status
+from rest_framework import status, generics, permissions, filters
 from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.exceptions import ValidationError
 from rest_framework import generics, permissions
+from django_filters.rest_framework import DjangoFilterBackend
 from fuzzywuzzy import process, fuzz
 from plotly import graph_objs as go
 from ..models import Book, Genre, Chapter, UserProfile, Author
@@ -42,47 +43,43 @@ class MyTokenObtainPairView(TokenObtainPairView):
 @api_view(['GET'])
 def getBooks(request):
     """
-    Retrieve books with sorting and filtering including user profile data.
+    Fetches a list of books with optional sorting and filtering.
+    Response includes detailed user profile info associated with each author.
+    Uses caching for better performance by storing results of frequent queries.
     """
     try:
-        # Get query parameters
+        # Retrieve query parameters
         sort_by = request.query_params.get('sort_by', 'title')
         genre = request.query_params.get('genre', None)
 
         # Validate sort_by parameter
-        valid_sort_options = ['title', 'rating']
-        if sort_by not in valid_sort_options:
-            raise ValidationError(f"Invalid value for 'sort_by'. It must be one of: {', '.join(valid_sort_options)}")
+        if sort_by not in ['title', 'rating']:
+            raise ValidationError(f"Invalid value for 'sort_by'. Allowed options are: 'title', 'rating'.")
 
         # Construct cache key
         cache_key = f'books_{sort_by}_{genre}'
-
-        # Check if data is in cache
         cached_data = cache.get(cache_key)
+
         if cached_data:
             return Response(cached_data, status=status.HTTP_200_OK)
 
-        # Construct base queryset
+        # Retrieve books queryset
         books = Book.objects.select_related('author__userprofile')
 
         # Apply genre filter if provided
         if genre:
             books = books.filter(genres__name__iexact=genre)
 
-        # Sort queryset based on sort_by parameter
-        if sort_by == 'title':
-            books = books.order_by('title')
-        elif sort_by == 'rating':
-            books = books.order_by('-rating')
+        # Order books queryset
+        books = books.order_by(sort_by if sort_by == 'title' else f'-{sort_by}')
 
-        # Serialize queryset
+        # Serialize data
         serializer = BookSerializer(books, many=True)
         data = serializer.data
 
-        # Cache the data
-        cache.set(cache_key, data, timeout=60 * 60)  # Cache for 1 hour
+        # Cache data
+        cache.set(cache_key, data, timeout=3600)
 
-        # Return response
         return Response(data, status=status.HTTP_200_OK)
 
     except ValidationError as e:
@@ -96,11 +93,7 @@ def getBooks(request):
 def getBooksByGenre(request, genre_name):
     """
     Retrieve books by genre including user profile data, with caching.
-
-    Note: Authentication and permission checks might be required
-    in a production environment.
     """
-
     try:
         genres = [genre.strip() for genre in genre_name.split(',')]
 
@@ -431,6 +424,7 @@ class BookList(generics.ListCreateAPIView):
     queryset = Book.objects.all()
     serializer_class = BookSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
 
     def get_queryset(self):
         """
