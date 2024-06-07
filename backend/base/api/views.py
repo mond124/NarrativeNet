@@ -1,6 +1,5 @@
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-<<<<<<< Updated upstream
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -325,8 +324,6 @@ def getChaptersByBook(request, book_id):
         return Response({"detail": "Chapters not found for the specified book."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-=======
->>>>>>> Stashed changes
 
 @api_view(['GET'])
 def getRoutes(request):
