@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import MyTokenObtainPairView, getBooks, getBooksByGenre, BulkCreateChaptersAPIView, getRoutes, getGenreDistribution, getChaptersByBook
+from .views import MyTokenObtainPairView, getBooks, getBooksByGenre, BulkCreateChaptersAPIView, getRoutes, getGenreDistribution, getChaptersByBook, BookList
 from rest_framework_simplejwt.views import TokenRefreshView
 
 
@@ -17,5 +17,6 @@ urlpatterns = [
     path('create-book/', views.createBook, name='create_book'),
     path('bulk-create-books-and-chapters/', views.BulkCreateBooksAndChaptersAPIView.as_view(), name='bulk_create_books_and_chapters'),
     path('genre-distribution/', getGenreDistribution, name='get_genre_distribution'),
-    path('chapters/<int:book_id>/', getChaptersByBook, name='get_chapters_by_book'),  # Added path for the getChaptersByBook view
+    path('chapters/<int:book_id>/', getChaptersByBook, name='get_chapters_by_book'),
+    path('books/', BookList.as_view(), name='book-list'),
 ]
