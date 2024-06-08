@@ -63,6 +63,13 @@ class AddBookView(View):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
         
+class GetAllBooksView(View):
+    def get(self, request, *args, **kwargs):
+        books = Book.objects.all().values(
+            'id', 'title', 'synopsis', 'book_cover', 'rating', 'views', 'author__name', 'genre__name'
+        )
+        return JsonResponse(list(books), safe=False)
+        
 @api_view(['GET'])
 def getRoutes(request):
     """
