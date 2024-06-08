@@ -1,81 +1,96 @@
 from django.db import models
-from django.core.exceptions import ValidationError
-from django.contrib.auth.models import User
-
-# Create your models here.
 
 class Author(models.Model):
-    name = models.CharField(max_length=255, unique=True)  # Assuming author names are unique
+    name = models.CharField(max_length=255)
 
     def __str__(self):
         return self.name
-
-    def clean(self):
-        # Check if an author with the same name exists (case-insensitive)
-        existing_author = Author.objects.filter(name__iexact=self.name).first()
-        if existing_author and existing_author != self:
-            raise ValidationError({'name': 'Author with this name already exists.'})
-
-    def save(self, *args, **kwargs):
-        # Ensure the name is in title case
-        self.name = self.name.title()
-        self.full_clean()
-        super().save(*args, **kwargs)
-
-
+    
 class Genre(models.Model):
-    name = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=255)
 
     def __str__(self):
         return self.name
 
-    def clean(self):
-        # Check if a genre with the same name exists (case-insensitive)
-        existing_genre = Genre.objects.filter(name__iexact=self.name).first()
-        if existing_genre and existing_genre != self:
-            raise ValidationError({'name': 'Genre with this name already exists.'})
+class Publisher(models.Model):
+    name = models.CharField(max_length=255)
 
-    def save(self, *args, **kwargs):
-        # Ensure the name is in title case
-        self.name = self.name.title()
-        self.full_clean()
-        super().save(*args, **kwargs)
-
+    def __str__(self):
+        return self.name
+    
 class Book(models.Model):
-    id = models.AutoField(primary_key=True)
-    title = models.CharField(max_length=255, unique=True)
-    author = models.ManyToManyField(Author)  # Updated field for author
+    title = models.CharField(max_length=255)
+    author = models.ForeignKey(Author, on_delete=models.CASCADE)
     synopsis = models.TextField()
+    genre = models.ForeignKey(Genre, on_delete=models.CASCADE)
+    book_cover = models.ImageField(upload_to='book_covers/')
+    rating = models.DecimalField(max_digits=3, decimal_places=2)
     views = models.IntegerField()
-    rating = models.DecimalField(max_digits=3, decimal_places=1)
-    genres = models.ManyToManyField(Genre)
-    cover_image = models.ImageField(upload_to='covers/', default='default_cover.jpg')
-
-    def save(self, *args, **kwargs):
-        # Normalize title and author to title case before saving
-        self.title = self.title.title()
-        self.author = self.author.title()
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
-
-class Chapter(models.Model):
+    
+class BookPublisher(models.Model):
     book = models.ForeignKey(Book, on_delete=models.CASCADE)
-    title = models.CharField(max_length=255, blank=True)
-    file = models.FileField(upload_to='chapters/')
-    chapter_number = models.IntegerField(null=True, blank=False)
-
-    def save(self, *args, **kwargs):
-        # Normalize title to title case before saving
-        self.title = self.title.title()
-        super().save(*args, **kwargs)
+    publisher = models.ForeignKey(Publisher, on_delete=models.CASCADE)
+    translation = models.BooleanField(default=False)
+    edition = models.CharField(max_length=255)
 
     def __str__(self):
-        return f"{self.book.title}"
+        return f"{self.book.title} - {self.publisher.name} ({'Translation' if self.translation else 'Original'})"
     
-class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    favorite_genres = models.ManyToManyField(Genre)
-    favorite_authors = models.ManyToManyField(Author)  # Updated to reference the Author model
-    favorite_books = models.ManyToManyField(Book)
+class Chapter(models.Model):
+    book = models.ForeignKey(Book, on_delete=models.CASCADE)
+    publisher = models.ForeignKey(Publisher, on_delete=models.CASCADE)
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+
+    def __str__(self):
+        return self.title
+    
+class User(models.Model):
+    firstname = models.CharField(max_length=255)
+    lastname = models.CharField(max_length=255)
+    email = models.EmailField(unique=True)
+
+    def __str__(self):
+        return f"{self.firstname} {self.lastname}"
+    
+class FavoriteBook(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    book = models.ForeignKey(Book, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.user} - {self.book.title}"
+
+class FavoriteAuthor(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    author = models.ForeignKey(Author, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.user} - {self.author.name}"
+
+class SavedBook(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    book = models.ForeignKey(Book, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.user} - {self.book.title}"
+    
+class History(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    book = models.ForeignKey(Book, on_delete=models.CASCADE)
+    last_chapter_read = models.ForeignKey(Chapter, on_delete=models.CASCADE)
+    last_read_date = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user} - {self.book.title} (Last read: {self.last_read_date})"
+
+class UserBehavior(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    book = models.ForeignKey(Book, on_delete=models.CASCADE)
+    action_type = models.CharField(max_length=255)
+    action_date = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user} - {self.book.title} ({self.action_type})"

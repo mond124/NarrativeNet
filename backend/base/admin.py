@@ -1,22 +1,16 @@
 from django.contrib import admin
-from .models import Book, Genre, Chapter, UserProfile, Author
+from .models import Author, Genre, Publisher, Book, BookPublisher, Chapter, User, FavoriteBook, FavoriteAuthor, SavedBook, History, UserBehavior
 # Register your models here.
 
-class GenreAdmin(admin.ModelAdmin):
-    list_display = ('name',)
-
-admin.site.register(Genre, GenreAdmin)
-admin.site.register(Chapter)
-admin.site.register(UserProfile)
 admin.site.register(Author)
-
-class BookAdmin(admin.ModelAdmin):
-    list_display = ('title', 'synopsis', 'views', 'rating', 'display_genres')
-    filter_horizontal = ('genres',)  # Use filter horizontal widget for genres
-
-    def display_genres(self, obj):
-        return ", ".join([genre.name for genre in obj.genres.all()])
-
-    display_genres.short_description = 'Genres'
-
-admin.site.register(Book, BookAdmin)
+admin.site.register(Genre)
+admin.site.register(Publisher)
+admin.site.register(Book)
+admin.site.register(BookPublisher)
+admin.site.register(Chapter)
+admin.site.register(User)
+admin.site.register(FavoriteBook)
+admin.site.register(FavoriteAuthor)
+admin.site.register(SavedBook)
+admin.site.register(History)
+admin.site.register(UserBehavior)
