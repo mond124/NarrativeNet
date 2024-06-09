@@ -42,6 +42,21 @@ class AddBookView(View):
                 # Get or create Publisher
                 publisher, created = Publisher.objects.get_or_create(name=publisher_name)
 
+                # Check for duplicate book
+                existing_book = Book.objects.filter(
+                    title=title,
+                    author=author,
+                    genre=genre,
+                    bookpublisher__publisher=publisher,
+                    bookpublisher__translation=translation,
+                    bookpublisher__edition=edition
+                ).first()
+
+                if existing_book:
+                    # Book already exists, skip adding
+                    book_ids.append(existing_book.id)
+                    continue
+
                 # Create the Book
                 book = Book.objects.create(
                     title=title,
