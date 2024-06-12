@@ -8,20 +8,30 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from .serializers import BookSerializer
 from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser
 import json
+import logging
 from ..models import Author, Genre, Publisher, Book, BookPublisher, Chapter
 
-
+logger = logging.getLogger(__name__)
 class AddBookView(APIView):
+
     def post(self, request, *args, **kwargs):
-        serializer = BookSerializer(data=request.data, many=isinstance(request.data, list))
-        if serializer.is_valid():
-            serializer.save()
-            book_ids = [book.id for book in serializer.instance] if isinstance(serializer.instance, list) else [serializer.instance.id]
-            return Response({'status': 'success', 'book_ids': book_ids}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-class GetAllBooksView(View):
+        try:
+            serializer = BookSerializer(data=request.data, many=isinstance(request.data, list))
+            if serializer.is_valid():
+                serializer.save()
+                return JsonResponse({'status': 'success'}, status=201)
+            else:
+                logger.error(f"Serializer errors: {serializer.errors}")
+                return JsonResponse(serializer.errors, status=400, safe=False)
+        except KeyError as e:
+            return JsonResponse({'error': f'Missing key: {str(e)}'}, status=400)
+        except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
+
+class GetAllBooksView(APIView):
     def get(self, request, *args, **kwargs):
         books = Book.objects.all().values(
             'id', 'title', 'synopsis', 'book_cover', 'rating', 'views', 'author__name', 'genre__name'

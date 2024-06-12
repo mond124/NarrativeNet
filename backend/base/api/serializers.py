@@ -16,32 +16,41 @@ class PublisherSerializer(serializers.ModelSerializer):
         model = Publisher
         fields = ['name']
 
-class BookPublisherSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BookPublisher
-        fields = ['publisher', 'translation', 'edition']
-
 class BookSerializer(serializers.ModelSerializer):
-    author = AuthorSerializer()
-    genre = GenreSerializer()
-    bookpublisher = BookPublisherSerializer(many=True)
+    author = serializers.CharField()
+    genre = serializers.CharField()
+    publisher = serializers.CharField()
+    book_cover = serializers.CharField(required=False)  # Treating book_cover as a path
+    translation = serializers.BooleanField(default=False)
+    edition = serializers.CharField(default='Original')
 
     class Meta:
         model = Book
-        fields = ['title', 'author', 'genre', 'synopsis', 'book_cover', 'rating', 'views', 'bookpublisher']
+        fields = ['title', 'author', 'genre', 'synopsis', 'publisher', 'translation', 'edition', 'book_cover', 'rating', 'views']
 
     def create(self, validated_data):
-        author_data = validated_data.pop('author')
-        genre_data = validated_data.pop('genre')
-        bookpublishers_data = validated_data.pop('bookpublisher')
+        author_name = validated_data.pop('author')
+        genre_name = validated_data.pop('genre')
+        publisher_name = validated_data.pop('publisher')
 
-        author, created = Author.objects.get_or_create(name=author_data['name'])
-        genre, created = Genre.objects.get_or_create(name=genre_data['name'])
-        book = Book.objects.create(author=author, genre=genre, **validated_data)
+        author, created = Author.objects.get_or_create(name=author_name)
+        genre, created = Genre.objects.get_or_create(name=genre_name)
+        publisher, created = Publisher.objects.get_or_create(name=publisher_name)
 
-        for bookpublisher_data in bookpublishers_data:
-            publisher_data = bookpublisher_data.pop('publisher')
-            publisher, created = Publisher.objects.get_or_create(name=publisher_data['name'])
-            BookPublisher.objects.create(book=book, publisher=publisher, **bookpublisher_data)
+        translation = validated_data.pop('translation', False)
+        edition = validated_data.pop('edition', 'Original')
+
+        book = Book.objects.create(
+            author=author,
+            genre=genre,
+            **validated_data
+        )
+
+        BookPublisher.objects.create(
+            book=book,
+            publisher=publisher,
+            translation=translation,
+            edition=edition
+        )
 
         return book
