@@ -47,9 +47,9 @@ class AddBookView(View):
                     title=title,
                     author=author,
                     genre=genre,
-                    bookpublisher__publisher=publisher,
-                    bookpublisher__translation=translation,
-                    bookpublisher__edition=edition
+                    bookpublisher_publisher=publisher,
+                    bookpublisher_translation=translation,
+                    bookpublisher_edition=edition
                 ).first()
 
                 if existing_book:
@@ -90,7 +90,7 @@ class AddBookView(View):
 class GetAllBooksView(View):
     def get(self, request, *args, **kwargs):
         books = Book.objects.all().values(
-            'id', 'title', 'synopsis', 'book_cover', 'rating', 'views', 'author__name', 'genre__name'
+            'id', 'title', 'synopsis', 'book_cover', 'rating', 'views', 'author_name', 'genre_name'
         )
         return JsonResponse(list(books), safe=False)
         
