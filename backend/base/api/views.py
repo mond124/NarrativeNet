@@ -17,14 +17,13 @@ logger = logging.getLogger(__name__)
 
 class AddBookView(APIView):
     def post(self, request, *args, **kwargs):
-        successfully_added = []
-        rejected_books = []
+        successfully_added, rejected_books = [], []
 
         for book_data in request.data:
             serializer = BookSerializer(data=book_data)
             if serializer.is_valid():
                 serializer.save()
-                successfully_added.append(serializer.data)
+                successfully_added.append(book_data)
             else:
                 logger.error(f"Serializer errors: {serializer.errors}")
                 rejected_books.append({
@@ -32,23 +31,10 @@ class AddBookView(APIView):
                     "errors": serializer.errors
                 })
 
-        if not successfully_added:
-            return JsonResponse({
-                "status": "error",
-                "rejected_books": rejected_books
-            }, status=400)
-
-        if rejected_books:
-            return JsonResponse({
-                "status": "partial_success",
-                "successfully_added": successfully_added,
-                "rejected_books": rejected_books
-            }, status=207)
-
         return JsonResponse({
-            "status": "success",
-            "successfully_added": successfully_added
-        }, status=201)
+            "accepted_books": successfully_added,
+            "rejected_books": rejected_books
+        }, status=201 if not rejected_books else 400)
 
 class GetAllBooksView(APIView):
     def get(self, request, *args, **kwargs):
