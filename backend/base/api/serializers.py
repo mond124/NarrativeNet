@@ -33,9 +33,9 @@ class BookSerializer(serializers.ModelSerializer):
         genre_name = validated_data.pop('genre')
         publisher_name = validated_data.pop('publisher')
 
-        author, created = Author.objects.get_or_create(name=author_name)
-        genre, created = Genre.objects.get_or_create(name=genre_name)
-        publisher, created = Publisher.objects.get_or_create(name=publisher_name)
+        author, _ = Author.objects.get_or_create(name=author_name)
+        genre, _ = Genre.objects.get_or_create(name=genre_name)
+        publisher, _ = Publisher.objects.get_or_create(name=publisher_name)
 
         translation = validated_data.pop('translation', False)
         edition = validated_data.pop('edition', 'Original')
