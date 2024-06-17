@@ -17,24 +17,13 @@ logger = logging.getLogger(__name__)
 
 class AddBookView(APIView):
     def post(self, request, *args, **kwargs):
-        successfully_added, rejected_books = [], []
-
-        for book_data in request.data:
-            serializer = BookSerializer(data=book_data)
-            if serializer.is_valid():
-                serializer.save()
-                successfully_added.append(book_data)
-            else:
-                logger.error(f"Serializer errors: {serializer.errors}")
-                rejected_books.append({
-                    "data": book_data,
-                    "errors": serializer.errors
-                })
-
-        return JsonResponse({
-            "accepted_books": successfully_added,
-            "rejected_books": rejected_books
-        }, status=201 if not rejected_books else 400)
+        serializer = BookSerializer(data=request.data, many=isinstance(request.data, list))
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'status': 'success', 'accepted_books': serializer.data}, status=status.HTTP_201_CREATED)
+        else:
+            logger.error(f"Serializer errors: {serializer.errors}")
+            return Response({'status': 'error', 'rejected_books': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 class GetAllBooksView(APIView):
     def get(self, request, *args, **kwargs):
