@@ -42,6 +42,12 @@ class GetAllBooksView(APIView):
             'id', 'title', 'synopsis', 'book_cover', 'rating', 'views', 'author__name', 'genre__name'
         )
         return JsonResponse(list(books), safe=False)
+    
+class GetBookView(APIView):
+    def get(self, request, pk, *args, **kwargs):
+        book = get_object_or_404(Book, pk=pk)
+        serializer = BookSerializer(book)
+        return Response(serializer.data, status=status.HTTP_200_OK)
         
 @api_view(['GET'])
 def getRoutes(request):
