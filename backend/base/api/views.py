@@ -34,7 +34,7 @@ class GetAllBooksView(APIView):
     
 class GetBookView(APIView):
     def get(self, request, pk, *args, **kwargs):
-        book = get_object_or_404(Book, pk=1)
+        book = get_object_or_404(Book, pk=pk)
         serializer = BookSerializer(book)
         return Response(serializer.data, status=status.HTTP_200_OK)
         
