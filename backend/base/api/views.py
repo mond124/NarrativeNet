@@ -3,13 +3,8 @@ from rest_framework.decorators import api_view
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from django.views import View
 from .serializers import BookSerializer
 from rest_framework import status
-from rest_framework.parsers import MultiPartParser, FormParser
-import json
 import logging
 from ..models import Author, Genre, Publisher, Book, BookPublisher, Chapter
 
