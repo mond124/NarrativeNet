@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from .serializers import BookSerializer
 from rest_framework import status
 from fuzzywuzzy import fuzz
+from django.db.models.functions import Length
 import logging
 from ..models import Author, Genre, Publisher, Book, BookPublisher, Chapter
 
@@ -41,7 +42,7 @@ class SearchBookView(APIView):
             return Response({'error': 'Query parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         threshold = 60
-        books = Book.objects.all()
+        books = Book.objects.annotate(title_length=Length('title')).order_by('title_length')[:100]
         matching_books = []
 
         for book in books:
