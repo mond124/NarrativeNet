@@ -57,7 +57,17 @@ class SearchBookView(APIView):
         matching_books = sorted(matching_books, key=lambda x: x['similarity'], reverse=True)
 
         return Response({'results': matching_books}, status=status.HTTP_200_OK)
+
+class BooksByGenreView(APIView):
+    def get(self, request, genre_name, *args, **kwargs):
+        genre = get_object_or_404(Genre, name=genre_name)
+        books = Book.objects.filter(genre=genre)
+        if not books.exists():
+            return Response({'message': f'No books found for genre: {genre_name}'}, status=status.HTTP_404_NOT_FOUND)
         
+        serializer = BookSerializer(books, many=True)
+        return Response({'results': serializer.data}, status=status.HTTP_200_OK)
+            
 @api_view(['GET'])
 def getRoutes(request):
     """
