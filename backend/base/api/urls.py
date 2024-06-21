@@ -9,5 +9,5 @@ urlpatterns = [
     path('books/<int:pk>/', GetBookView.as_view(), name='get-book'),
     path('search/', SearchBookView.as_view(), name='search-books'),
     path('books/genre/<str:genre_name>/', BooksByGenreView.as_view(), name='books-by-genre'),
-    path('genres/', GetAllGenresView.as_view(), name='get-all-genres'),
+    path('books/genre/', GetAllGenresView.as_view(), name='get-all-genres'),
 ]
