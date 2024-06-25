@@ -10,5 +10,5 @@ urlpatterns = [
     path('search/', SearchBookView.as_view(), name='search-books'),
     path('books/genre/<str:genre_name>/', BooksByGenreView.as_view(), name='books-by-genre'),
     path('books/genre/', GetAllGenresView.as_view(), name='get-all-genres'),
-    path('authors/', GetAllAuthorsView.as_view(), name='get-all-authors'),
+    path('books/authors/', GetAllAuthorsView.as_view(), name='get-all-authors'),
 ]
