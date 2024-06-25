@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
-from .serializers import BookSerializer, GenreSerializer
+from .serializers import BookSerializer, GenreSerializer, AuthorSerializer
 from rest_framework import status
 from fuzzywuzzy import fuzz
 from django.db.models.functions import Length
@@ -75,6 +75,15 @@ class GetAllGenresView(APIView):
             return Response({'message': 'No genres found'}, status=status.HTTP_404_NOT_FOUND)
         
         serializer = GenreSerializer(genres, many=True)
+        return Response({'results': serializer.data}, status=status.HTTP_200_OK)
+
+class GetAllAuthorsView(APIView):
+    def get(self, request, *args, **kwargs):
+        authors = Author.objects.all()
+        if not authors.exists():
+            return Response({'message': 'No authors found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = AuthorSerializer(authors, many=True)
         return Response({'results': serializer.data}, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
