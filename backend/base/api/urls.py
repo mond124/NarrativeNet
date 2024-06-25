@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import getRoutes, AddBookView, GetAllBooksView, GetBookView, SearchBookView, BooksByGenreView, GetAllGenresView
+from .views import getRoutes, AddBookView, GetAllBooksView, GetBookView, SearchBookView, BooksByGenreView, GetAllGenresView, GetAllAuthorsView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
@@ -10,4 +10,5 @@ urlpatterns = [
     path('search/', SearchBookView.as_view(), name='search-books'),
     path('books/genre/<str:genre_name>/', BooksByGenreView.as_view(), name='books-by-genre'),
     path('books/genre/', GetAllGenresView.as_view(), name='get-all-genres'),
+    path('books/authors/', GetAllAuthorsView.as_view(), name='get-all-authors'),
 ]
